@@ -51,14 +51,9 @@ jobs:
 
       - name: Run tests
         run: |
-          make test
+          coverage run -m pytest .
 
-      - if: ${{ matrix.coverage }}
-        run: |
-          make coverage
-
-      - if: ${{ matrix.coverage }}
-        name: Upload coverage to Codecov
+      - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
