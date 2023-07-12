@@ -6,4 +6,4 @@ class SearchConfig(AppConfig):
     name = "search"
 
     def ready(self):
-        from search.signals import signals
+        import search.signals
