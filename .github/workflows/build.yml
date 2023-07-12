@@ -1,0 +1,64 @@
+---
+name: "build"
+
+on:  # yamllint disable-line rule:truthy
+  pull_request:
+  push:
+    branches: main
+
+jobs:
+  build:
+    name: Python ${{ matrix.python-version }} | Django ${{ matrix.django-version}} | Ubuntu
+    runs-on: ubuntu-20.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - python-version: 3.8
+            django-version: "3.2.*"
+          - python-version: 3.8
+            django-version: "4.0.*"
+
+          - python-version: 3.9
+            django-version: "3.2.*"
+          - python-version: 3.9
+            django-version: "4.0.*"
+          - python-version: 3.9
+            django-version: "4.1.*"
+
+          - python-version: "3.10"
+            django-version: "3.2.*"
+          - python-version: "3.10"
+            django-version: "4.0.*"
+          - python-version: "3.10"
+            django-version: "4.1.*"
+            coverage: true
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Setup Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v1
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Django ${{ matrix.django-version }}
+        run: |
+          pip install Django==${{ matrix.django-version }}
+          pip install coverage
+          pip install pytz
+
+      - name: Run tests
+        run: |
+          make test
+
+      - if: ${{ matrix.coverage }}
+        run: |
+          make coverage
+
+      - if: ${{ matrix.coverage }}
+        name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v3
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
