@@ -6,8 +6,8 @@ from django.db import models
 
 from typesense.exceptions import ObjectNotFound
 
-from search.settings.typesense_client import client
-from search.methods import bulk_delete_typesense_records, bulk_update_typesense_records
+from django_typesense.typesense_client import client
+from django_typesense.methods import bulk_delete_typesense_records, bulk_update_typesense_records
 
 logger = logging.getLogger(__name__)
 

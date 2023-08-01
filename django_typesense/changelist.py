@@ -55,11 +55,11 @@ class TypesenseChangeList(ChangeList):
         list_editable,
         model_admin,
         sortable_by,
+        search_help_text
     ):
         self.model = model
         self.opts = model._meta
         self.lookup_opts = self.opts
-        self.root_queryset = model_admin.get_queryset(request)
 
         # TYPESENSE
         self.root_results = model_admin.get_results(request)
@@ -78,8 +78,9 @@ class TypesenseChangeList(ChangeList):
         self.model_admin = model_admin
         self.preserved_filters = model_admin.get_preserved_filters(request)
         self.sortable_by = sortable_by
+        self.search_help_text = search_help_text
 
-        # Get search parameters from the query string.
+        # Get django_typesense parameters from the query string.
         _search_form = self.search_form_class(request.GET)
         if not _search_form.is_valid():
             for error in _search_form.errors.values():
@@ -107,12 +108,11 @@ class TypesenseChangeList(ChangeList):
             self.list_editable = ()
         else:
             self.list_editable = list_editable
-        self.queryset = self.get_queryset(request)
 
         # TYPESENSE
         self.results = self.get_typesense_results(request)
-
         self.get_results(request)
+
         if self.is_popup:
             title = gettext("Select %s")
         elif self.model_admin.has_change_permission(request):
@@ -131,7 +131,7 @@ class TypesenseChangeList(ChangeList):
 
         # Get the total number of objects, with no admin filters applied.
         if self.model_admin.show_full_result_count:
-            full_result_count = self.root_queryset.count()
+            full_result_count = self.root_results['found']
         else:
             full_result_count = None
         can_show_all = result_count <= self.list_max_show_all
@@ -139,7 +139,10 @@ class TypesenseChangeList(ChangeList):
 
         # Get the list of objects to display on this page.
         if (self.show_all and can_show_all) or not multi_page:
-            result_list = self.queryset._clone()
+            result_list = [
+                self.model(**result["document"])
+                for result in self.results["hits"]
+            ]
         else:
             try:
                 result_list = paginator.page(self.page_num).object_list
@@ -159,9 +162,10 @@ class TypesenseChangeList(ChangeList):
         self.multi_page = multi_page
         self.paginator = paginator
 
+
     def get_typesense_results(self, request):
         """
-        This should behave as get_queryset
+        This should do what Changelist.get_queryset does
 
         Args:
             request:
@@ -169,11 +173,30 @@ class TypesenseChangeList(ChangeList):
         Returns:
             Typesense Search Results in dictionary
         """
-        # Apply search results
+
+        # First, we collect all the declared list filters.
+        (
+            self.filter_specs,
+            self.has_filters,
+            remaining_lookup_params,
+            filters_may_have_duplicates,
+            self.has_active_filters,
+        ) = self.get_filters(request)
+
+        # TODO: Then, we let every list filter modify the queryset to its liking.
+
+        # Apply django_typesense search results
         query = self.query or "*"
         results = self.model_admin.get_typesense_search_results(
             request,
             self.root_results,
             query,
+            self.page_num
+        )
+
+        # Set query string for clearing all filters.
+        self.clear_all_filters_qs = self.get_query_string(
+            new_params=remaining_lookup_params,
+            remove=self.get_filters_params(),
         )
         return results

@@ -13,17 +13,11 @@ class TypesenseSearchPaginator(Paginator):
 
     def page(self, number):
         """Return a Page object for the given 1-based page number."""
-        number = self.validate_number(number)
-        bottom = (number - 1) * self.per_page
-        top = bottom + self.per_page
-        if top + self.orphans >= self.count:
-            top = self.count
-
         # CREATE UNSAVED MODEL INSTANCES
         # TODO: Make sure no action like .save(), .delete() are used/attempted on them
         object_list = [
             self.model(**result["document"])
-            for result in self.object_list["hits"][bottom:top]
+            for result in self.object_list["hits"]
         ]
         return self._get_page(object_list, number, self)
 

@@ -1,9 +1,9 @@
 from django.apps import AppConfig
 
 
-class SearchConfig(AppConfig):
+class DjangoTypesenseConfig(AppConfig):
     default_auto_field = "django.db.models.BigAutoField"
-    name = "search"
+    name = "django_typesense"
 
     def ready(self):
-        import search.signals
+        import django_typesense.signals

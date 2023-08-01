@@ -1,9 +1,18 @@
+# django typesense
+[![codecov](https://codecov.io/gh/Siege-Software/django-typesense/branch/main/graph/badge.svg?token=S4W0E84821)](https://codecov.io/gh/Siege-Software/django-typesense)
+[![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+
+## What is it?
+TBA
+
+Some concepts were borrowed from [django-typesense](https://github.com/jkoestinger/django-typesense)
+
 # Setting up model
 
 # 1. Update the model to inherit from the Typesense model mixin
 
 ```
-from apps.search.models import TypeSenseMixin, TypesenseUpdateDeleteQuerySetManager
+from django_typesense.models import TypeSenseMixin, TypesenseUpdateDeleteQuerySetManager
 
 class MyModelManager(models.Manager):
     """Manager for class :class:`.models.MyModelName`
@@ -79,7 +88,7 @@ class MyModelName(TypeSenseMixin)
 To update a model admin to display and search from the model Typesense collection, the admin class should inherit from the TypesenseSearchAdminMixin
 
 ```
-from apps.search.admin import TypesenseSearchAdminMixin
+from django_typesense.admin import TypesenseSearchAdminMixin
 
 class MyModelAdmin(TypesenseSearchAdminMixin)
 
@@ -123,12 +132,44 @@ class MyModelAdmin(TypesenseSearchAdminMixin)
 To update or delete collection documents in bulk
 
 ```
-from apps.search.methods import bulk_delete_typsense_records, bulk_update_typsense_records
+from django_typesense.methods import bulk_delete_typsense_records, bulk_update_typsense_records
 from .models import MyModel
-from apps.search.settings.typesense_client import client
+from django_typesense.typesense_client import client
 
 model_qs = Model.objects.all().order_by('date_created')  # querysets should be ordered
 bulk_update_typesense_records(model_qs)  # for bulk document indexing
 bulk_delete_typsense_records(model_qs)  # for bulk document deletiom
 ```
+## Release Process
+Each release has its own branch, called stable/version_number and any changes will be issued from those branches. 
+The main branch has the latest stable version
 
+## Contribution
+TBA
+
+```
+# clone the repo
+git clone https://gitlab.com/siege-software/packages/django_typesense.git
+git checkout -b <your_branch_name> stable/1.x.x
+
+# Set up virtual environment
+python3.8 -m venv venv
+source venv/bin/activate
+
+pip install -r requirements-dev.txt
+
+# Enable automatic pre-commit hooks
+pre-commit install
+```
+
+## Running Tests
+```
+cd tests
+pytest .
+```
+
+## Building the package
+```python -m build```
+
+## Installing the package from build
+``` pip install path/to/django_typesense-0.0.1.tar.gz```

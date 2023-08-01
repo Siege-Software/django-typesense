@@ -7,7 +7,7 @@ from django.core.paginator import Paginator
 
 from typesense.exceptions import ObjectNotFound
 
-from search.settings.typesense_client import client
+from django_typesense.typesense_client import client
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def bulk_update_typesense_records(
     Returns:
         None
     """
-    from apps.search.models import TypesenseUpdateDeleteQuerySetManager
+    from django_typesense.models import TypesenseUpdateDeleteQuerySetManager
 
     if not isinstance(records_queryset, TypesenseUpdateDeleteQuerySetManager):
         logger.error(

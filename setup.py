@@ -1,7 +1,7 @@
-from setuptools import find_packages, setup
+from setuptools import find_namespace_packages, setup
 
 setup(
-    name="django-typesense",
+    name="django_typesense",
     author="Siege Software",
     author_email="info@siege.ai",
     version="0.0.1",
@@ -10,6 +10,6 @@ setup(
         "typesense",
     ],
     setup_requires=["wheel"],
-    packages=find_packages(),
+    packages=find_namespace_packages(),
     include_package_data=True,
 )

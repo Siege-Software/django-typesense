@@ -7,13 +7,13 @@ from functools import reduce
 from django.contrib import admin, messages
 from django.contrib.admin import helpers
 from django.contrib.admin.options import csrf_protect_m, IncorrectLookupParameters
-from django.contrib.admin.utils import lookup_needs_distinct, model_ngettext
+from django.contrib.admin.utils import lookup_spawns_duplicates, model_ngettext
 from django.core.exceptions import FieldDoesNotExist, PermissionDenied
 from django.core.paginator import Paginator
 from django.db import models
 from django.db.models.constants import LOOKUP_SEP
 from django.forms import formset_factory, forms
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseRedirect
 from django.middleware.csrf import get_token
 from django.template.loader import render_to_string
@@ -23,12 +23,14 @@ from django.urls import path
 from django.utils.text import smart_split, unescape_string_literal
 from django.utils.translation import ngettext
 
-from search.forms import SearchForm
-from search.methods import typesense_search
-from search.constants import TYPESENSE_PAGE_SIZE, BOOLEAN_TRUES
-from search.paginator import TypesenseSearchPaginator
+from django_typesense.forms import SearchForm
+from django_typesense.methods import typesense_search
+from django_typesense.paginator import TypesenseSearchPaginator
 
 logger = logging.getLogger(__name__)
+
+
+BOOLEAN_TRUES = ["y", "Y", "yes", "1", 1, True, "True", "true"]
 
 
 class TypesenseSearchAdminMixin(admin.ModelAdmin):
@@ -36,16 +38,11 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
     # TODO: Filtering should work with ModelAdmin.list_filter
     # TODO: Querying should work with ModelAdmin.search_fields
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # self.typesense_root_change_list_template = self.change_list_template or "admin/change_list.html"
-        # self.change_list_template = 'admin/search/change_list.html'
-
     @property
     def media(self):
         super_media = super().media
         return forms.Media(
-            js=super_media._js + ["admin/js/search-typesense.js"],
+            js=super_media._js + ["admin/js/django_typesense-typesense.js"],
             css=super_media._css,
         )
 
@@ -59,7 +56,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         """
         Return the ChangeList class for use on the changelist page.
         """
-        from search.changelist import TypesenseChangeList
+        from django_typesense.changelist import TypesenseChangeList
 
         return TypesenseChangeList
 
@@ -70,17 +67,17 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
             results, per_page, orphans, allow_empty_first_page, self.model
         )
 
-    def get_typesense_search_results(self, request, results, search_term):
+    def get_typesense_search_results(self, request, results, search_term, page_num):
         """
-        Return a tuple containing a queryset to implement the search
+        Return a tuple containing a queryset to implement the django_typesense
         and a boolean indicating if the results may contain duplicates.
         """
         results = typesense_search(
             collection_name=self.model.get_typesense_schema_name(),
             q=search_term or "*",
             query_by=self.model.query_by_fields,
-            per_page=self.list_per_page,
-            page=1,
+            page=page_num,
+            per_page=self.list_per_page
         )
         return results
 
@@ -101,7 +98,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         page = get_data.pop("page", 1)
         page = int(page[0]) if isinstance(page, list) else page
 
-        for field in self.get_search_date_fields():  # clean instant search dates
+        for field in self.get_search_date_fields():  # clean instant django_typesense dates
             if get_data.get(field):
                 get_data[field] = get_data[field].replace("+", " ")
 
@@ -111,7 +108,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
 
         if not query_by:
             logger.error(
-                f"Query by fields are required for Typesense search for model {self.model}"
+                f"Query by fields are required for Typesense django_typesense for model {self.model}"
             )
 
         context = get_context(request)
@@ -131,7 +128,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         context["results"] = search_results
 
         html = render_to_string(
-            template_name="admin/search/typesense-search-results-partial.html",
+            template_name="admin/django_typesense/typesense-django_typesense-results-partial.html",
             context=context,
         )
 

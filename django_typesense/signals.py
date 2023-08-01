@@ -1,7 +1,7 @@
 from django.db.models.signals import post_save, pre_delete
 from django.dispatch import receiver
 
-from search.models import TypeSenseMixin
+from django_typesense.models import TypeSenseMixin
 
 
 @receiver(post_save)
