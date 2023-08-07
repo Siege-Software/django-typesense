@@ -1,29 +1,7 @@
-import datetime
 import logging
-import math
-import operator
-from functools import reduce
 
-from django.contrib import admin, messages
-from django.contrib.admin import helpers
-from django.contrib.admin.options import csrf_protect_m, IncorrectLookupParameters
-from django.contrib.admin.utils import lookup_spawns_duplicates, model_ngettext
-from django.core.exceptions import FieldDoesNotExist, PermissionDenied
-from django.core.paginator import Paginator
-from django.db import models
-from django.db.models.constants import LOOKUP_SEP
-from django.forms import formset_factory, forms
-from django.utils.translation import gettext_lazy as _
-from django.http import JsonResponse, HttpResponseBadRequest, HttpResponseRedirect
-from django.middleware.csrf import get_token
-from django.template.loader import render_to_string
-from django.shortcuts import render
-from django.template.response import SimpleTemplateResponse, TemplateResponse
-from django.urls import path
-from django.utils.text import smart_split, unescape_string_literal
-from django.utils.translation import ngettext
-
-from django_typesense.forms import SearchForm
+from django.contrib import admin
+from django.forms import forms
 from django_typesense.methods import typesense_search
 from django_typesense.paginator import TypesenseSearchPaginator
 
@@ -35,7 +13,6 @@ BOOLEAN_TRUES = ["y", "Y", "yes", "1", 1, True, "True", "true"]
 
 class TypesenseSearchAdminMixin(admin.ModelAdmin):
     # TODO: Sorting should work with ModelAdmin.ordering
-    # TODO: Filtering should work with ModelAdmin.list_filter
     # TODO: Querying should work with ModelAdmin.search_fields
 
     @property

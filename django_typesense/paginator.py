@@ -1,6 +1,4 @@
-import warnings
-
-from django.core.paginator import Paginator, UnorderedObjectListWarning
+from django.core.paginator import Paginator
 from django.utils.functional import cached_property
 
 
