@@ -27,6 +27,9 @@ Install directly from github to test the most recent version
 pip install git+https://github.com/SiegeSoftware/django-typesense.git
 ```
 
+Add `django_typesense` to the list of installed apps.
+You will need to set up the typesense server on your machine.
+
 ### Update the model to inherit from the Typesense model mixin
 
 ```
