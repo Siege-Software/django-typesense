@@ -1,5 +1,6 @@
 from django import forms
 from django.contrib import messages
+from django.contrib.admin import BooleanFieldListFilter, AllValuesFieldListFilter
 from django.contrib.admin.exceptions import DisallowedModelAdminToField
 from django.contrib.admin.options import (
     IS_POPUP_VAR,
@@ -184,14 +185,28 @@ class TypesenseChangeList(ChangeList):
         ) = self.get_filters(request)
 
         # TODO: Then, we let every list filter modify the queryset to its liking.
+        filter_dict = {}
+        for filter_spec in self.filter_specs:
+            if isinstance(filter_spec, BooleanFieldListFilter):
+                boolean_map = {'0': 'false', '1': 'true'}
+                lookup_value = filter_spec.lookup_val
+                if lookup_value:
+                    filter_dict[filter_spec.field_path] = boolean_map[lookup_value]
 
+            if isinstance(filter_spec, AllValuesFieldListFilter):
+                lookup_value = filter_spec.lookup_val
+                if lookup_value:
+                    filter_dict[filter_spec.field_path] = lookup_value
+
+        filter_by = ' && '.join([f'{key}:{value}' for key, value in filter_dict.items()])
         # Apply django_typesense search results
         query = self.query or "*"
         results = self.model_admin.get_typesense_search_results(
             request,
             self.root_results,
             query,
-            self.page_num
+            self.page_num,
+            filter_by=filter_by
         )
 
         # Set query string for clearing all filters.
