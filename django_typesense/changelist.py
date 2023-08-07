@@ -1,6 +1,8 @@
 from django import forms
 from django.contrib import messages
-from django.contrib.admin import BooleanFieldListFilter, AllValuesFieldListFilter
+from django.contrib.admin import (
+    BooleanFieldListFilter, AllValuesFieldListFilter, ChoicesFieldListFilter, RelatedFieldListFilter
+)
 from django.contrib.admin.exceptions import DisallowedModelAdminToField
 from django.contrib.admin.options import (
     IS_POPUP_VAR,
@@ -140,10 +142,8 @@ class TypesenseChangeList(ChangeList):
 
         # Get the list of objects to display on this page.
         if (self.show_all and can_show_all) or not multi_page:
-            result_list = [
-                self.model(**result["document"])
-                for result in self.results["hits"]
-            ]
+            # Reuse values defined in paginator
+            result_list = [self.model(**result) for result in paginator.results]
         else:
             try:
                 result_list = paginator.page(self.page_num).object_list
@@ -184,26 +184,43 @@ class TypesenseChangeList(ChangeList):
             self.has_active_filters,
         ) = self.get_filters(request)
 
-        # TODO: Then, we let every list filter modify the queryset to its liking.
-        filter_dict = {}
+        # we let every list filter modify the queryset to its liking.
+        filters_dict = {}
+        custom_filters_dict = {}
+        text_filters = [AllValuesFieldListFilter, ChoicesFieldListFilter]
+
         for filter_spec in self.filter_specs:
             if isinstance(filter_spec, BooleanFieldListFilter):
                 boolean_map = {'0': 'false', '1': 'true'}
                 lookup_value = filter_spec.lookup_val
                 if lookup_value:
-                    filter_dict[filter_spec.field_path] = boolean_map[lookup_value]
+                    filters_dict[filter_spec.field_path] = boolean_map[lookup_value]
 
-            if isinstance(filter_spec, AllValuesFieldListFilter):
+            elif any(isinstance(filter_spec, _filter) for _filter in text_filters):
                 lookup_value = filter_spec.lookup_val
                 if lookup_value:
-                    filter_dict[filter_spec.field_path] = lookup_value
+                    filters_dict[filter_spec.field_path] = lookup_value
 
-        filter_by = ' && '.join([f'{key}:{value}' for key, value in filter_dict.items()])
+            elif isinstance(filter_spec, RelatedFieldListFilter):
+                lookup_value = filter_spec.lookup_val
+                typesense_field = f"{filter_spec.field_path}_id"
+
+                if lookup_value:
+                    filters_dict[typesense_field] = lookup_value
+
+            else:
+                if not hasattr(filter_spec, 'filter_by'):
+                    raise NotImplementedError(f'{filter_spec} is not supported')
+
+                # ALL CUSTOM FILTERS
+                custom_filters_dict.update(filter_spec.filter_by)
+
+        filter_by = ' && '.join([f'{key}:={value}' for key, value in filters_dict.items()])
+        filter_by += ' && '.join([f'{key}:{value}' for key, value in custom_filters_dict.items()])
+
         # Apply django_typesense search results
         query = self.query or "*"
         results = self.model_admin.get_typesense_search_results(
-            request,
-            self.root_results,
             query,
             self.page_num,
             filter_by=filter_by

@@ -2,14 +2,32 @@
 [![codecov](https://codecov.io/gh/Siege-Software/django-typesense/branch/main/graph/badge.svg?token=S4W0E84821)](https://codecov.io/gh/Siege-Software/django-typesense)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-## What is it?
-TBA
+[!WARNING]  
+**This package is in the initial development phase. Do not use in production environment.**
 
+## What is it?
+Faster Django Admin powered by [Typesense](https://typesense.org/)
+
+## TODOs
+- Sorting
+- Live Search
+- Performance comparison stats
+
+## Unsupported django admin features
+- Custom admin [display functions](https://docs.djangoproject.com/en/4.2/ref/contrib/admin/#django.contrib.admin.display)
+
+## Credits
 Some concepts were borrowed from [django-typesense](https://github.com/jkoestinger/django-typesense)
 
-# Setting up model
+## How to use
+`pip install django-typesense`
 
-# 1. Update the model to inherit from the Typesense model mixin
+Install directly from github to test the most recent version
+```
+pip install git+https://github.com/SiegeSoftware/django-typesense.git
+```
+
+### Update the model to inherit from the Typesense model mixin
 
 ```
 from django_typesense.models import TypeSenseMixin, TypesenseUpdateDeleteQuerySetManager
@@ -84,52 +102,20 @@ class MyModelName(TypeSenseMixin)
 
 `TypesenseUpdateDeleteQuerySetManager` is required to automatically index model changes on create, update and delete
 
-# 2. Admin Setup
+### Admin Setup
 To update a model admin to display and search from the model Typesense collection, the admin class should inherit from the TypesenseSearchAdminMixin
 
 ```
 from django_typesense.admin import TypesenseSearchAdminMixin
 
-class MyModelAdmin(TypesenseSearchAdminMixin)
-
-    #  typesense_list_fields lists the fields that will be displayed in admin
-    typesense_list_fields = [
-        'field1', 'field2', 'field3', 'date_creatd'
-    ]
-    typesense_list_date_fields = ['date_created']
-    
-    def search_typesense(self, request, **kwargs):
-
-    user = request.user
-    sort_by = 'date_created:desc'
-    template_name = 'admin/work/change_list.html'
-
-    query_by_fields = [
-        {
-            'admin_field': 'field1',
-            'typesense_field': 'field1'
-        },
-        {
-            'admin_field': 'field2',
-            'typesense_field': 'field2',
-            'boolean': True
-        },
-        {
-            'admin_field': 'is_x',
-            'typesense_field': 'is_x',
-            'reverse_field': 'is_y',  #  Reverse field is used to negate another field based on another field
-            'boolean': True
-        }
-    ]
-
-    filter_by_query = self.get_query_by_string(request, query_by_fields)
-
-    return super().search_typesense(request, template_name=template_name, sort_by=sort_by, filter_by=filter_by_query)
+class MyModelAdmin(TypesenseSearchAdminMixin):
+    pass
 
 ```
 
-# 3. Bulk indexing typesense collections
-To update or delete collection documents in bulk
+### Bulk indexing typesense collections
+To update or delete collection documents in bulk. Bulk updating is multi-threaded. 
+You might encounter poor performance when indexing large querysets. Suggestions on how to improve are welcome.
 
 ```
 from django_typesense.methods import bulk_delete_typsense_records, bulk_update_typsense_records
@@ -140,6 +126,51 @@ model_qs = Model.objects.all().order_by('date_created')  # querysets should be o
 bulk_update_typesense_records(model_qs)  # for bulk document indexing
 bulk_delete_typsense_records(model_qs)  # for bulk document deletiom
 ```
+
+# Custom Admin Filters
+To make use of custom admin filters, define a `filter_by` property in the filter definition.
+Define boolean typesense field `has_alien` that gets it's value from a model property.
+
+```
+@property
+def has_alien(self):
+    # moon_aliens and mars_aliens are reverse foreign keys
+    return self.moon_aliens.exists() or self.mars_aliens.exists()
+```
+
+```
+class HasAlienFilter(admin.SimpleListFilter):
+    title = _('Has Alien')
+    parameter_name = 'has_alien'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('all', 'All'),
+            ('True', 'Yes'),
+            ('False', 'No')
+        )
+
+    def queryset(self, request, queryset):
+        # This is used by the default django admin
+        if self.value() == 'True':
+            return queryset.filter(Q(mars_aliens__isnull=False) | Q(moon_aliens__isnull=False))
+        elif self.value() == 'False':
+            return queryset.filter(mars_aliens__isnull=True, moon_aliens__isnull=True)
+            
+        return queryset
+
+    @property
+    def filter_by(self):
+        # This is used by typesense
+        if self.value() == 'True':
+            return {"has_alien": "=true"}
+        elif self.value() == 'False':
+            return {"has_alien": "!=false"}
+
+        return {}
+```
+
+
 ## Release Process
 Each release has its own branch, called stable/version_number and any changes will be issued from those branches. 
 The main branch has the latest stable version
