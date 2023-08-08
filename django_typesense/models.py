@@ -43,7 +43,7 @@ class TypesenseUpdateDeleteQuerySetManager(models.QuerySet):
 
 
 class TypeSenseMixin(models.Model):
-    typesense_fields = []
+    typesense_fields = {}
     typesense_schema_name = None
     typesense_default_sorting_field = None
     query_by_fields = "id"
@@ -58,11 +58,11 @@ class TypeSenseMixin(models.Model):
 
     @classmethod
     def get_typesense_fields(cls):
-        fields = deepcopy(cls.typesense_fields)
+        fields = [{'name': key} | values for key, values in cls.typesense_fields.items()]
 
         # Auto adds the pk as Id if absent
-        if not any(field["name"] == "id" for field in fields):
-            fields.append({"name": "id", "type": "string", "attribute": "pk"})
+        if not cls.typesense_fields.get('id'):
+            fields.append({"name": "id", "type": "string", "attribute": "pk", "sort": True})
 
         return fields
 

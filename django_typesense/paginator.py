@@ -8,14 +8,27 @@ class TypesenseSearchPaginator(Paginator):
     ):
         super().__init__(object_list, per_page, orphans, allow_empty_first_page)
         self.model = model
+        self.results = []
+
+    def prepare_values(self):
+        """
+        Do whatever is required to present the values correctly in the admin
+
+        Returns:
+            A list of model instances
+        """
 
         model_field_names = set((local_field.name for local_field in self.model._meta.local_fields))
-        typesense_field_names = [field['name'] for field in self.model.typesense_fields]
-        fields_to_remove = set(typesense_field_names).difference(model_field_names)
-        self.results = [result["document"] for result in self.object_list["hits"]]
+        fields_to_remove = set(self.model.typesense_fields.keys()).difference(model_field_names)
 
-        # Remove values that are not model fields
-        [result.pop(key) for result in self.results for key in fields_to_remove]
+        for hit in self.object_list["hits"]:
+            result = hit["document"]
+            # Remove values that are not model fields
+            [result.pop(key) for key in fields_to_remove]
+
+            # TODO: set foreignkeys
+
+            # TODO: set date fields
 
     def page(self, number):
         """Return a Page object for the given 1-based page number."""

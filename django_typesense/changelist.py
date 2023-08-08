@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from django import forms
 from django.contrib import messages
 from django.contrib.admin import (
@@ -11,7 +13,10 @@ from django.contrib.admin.options import (
 )
 from django.contrib.admin.views.main import ChangeList
 from django.core.paginator import InvalidPage
+from django.db import models
+from django.db.models import OrderBy
 from django.utils.translation import gettext
+from django.utils.dateparse import parse_datetime
 
 # Changelist settings
 ALL_VAR = "all"
@@ -63,6 +68,7 @@ class TypesenseChangeList(ChangeList):
         self.model = model
         self.opts = model._meta
         self.lookup_opts = self.opts
+        self.root_queryset = model_admin.get_queryset(request)
 
         # TYPESENSE
         self.root_results = model_admin.get_results(request)
@@ -163,6 +169,97 @@ class TypesenseChangeList(ChangeList):
         self.multi_page = multi_page
         self.paginator = paginator
 
+    def get_ordering(self, request):
+        """
+        Return the list of ordering fields for the change list.
+        First check the get_ordering() method in model admin, then check
+        the object's default ordering. Then, any manually-specified ordering
+        from the query string overrides anything. Finally, a deterministic
+        order is guaranteed by calling _get_deterministic_ordering() with the
+        constructed ordering.
+        """
+        params = self.params
+        ordering = list(
+            self.model_admin.get_ordering(request) or self._get_default_ordering()
+        )
+        if ORDER_VAR in params:
+            # Clear ordering and used params
+            ordering = []
+            order_params = params[ORDER_VAR].split(".")
+            for p in order_params:
+                try:
+                    none, pfx, idx = p.rpartition("-")
+                    field_name = self.list_display[int(idx)]
+                    order_field = self.get_ordering_field(field_name)
+                    if not order_field:
+                        continue  # No 'admin_order_field', skip it
+                    if isinstance(order_field, OrderBy):
+                        if pfx == "-":
+                            order_field = order_field.copy()
+                            order_field.reverse_ordering()
+                        ordering.append(order_field)
+                    elif hasattr(order_field, "resolve_expression"):
+                        # order_field is an expression.
+                        ordering.append(
+                            order_field.desc() if pfx == "-" else order_field.asc()
+                        )
+                    # reverse order if order_field has already "-" as prefix
+                    elif order_field.startswith("-") and pfx == "-":
+                        ordering.append(order_field[1:])
+                    else:
+                        ordering.append(pfx + order_field)
+                except (IndexError, ValueError):
+                    continue  # Invalid ordering specified, skip it.
+
+        return self._get_deterministic_ordering(ordering)
+
+    def get_sort_by(self, ordering):
+        sort_dict = {}
+
+        for param in ordering:
+            if param.startswith('-'):
+                _, field_name = param.split('-')
+                order = 'desc'
+            else:
+                field_name = param
+                order = 'asc'
+
+            # Temporarily left out: Could not find a field named `id` in the schema for sorting
+            # if field_name == 'pk':
+            #     sort_dict['id'] = order
+            #     continue
+
+            field_schema_info = self.model.typesense_fields.get(field_name)
+            if not field_schema_info:
+                continue
+
+            if not field_schema_info.get('sort') and field_schema_info['type'] == 'string':
+                raise ValueError(
+                    f"Sorting on field '{field_name}' or type 'string' is only allowed if the sort property is "
+                    f"enabled in the collection schema."
+                )
+
+            sort_dict[field_name] = order
+
+        sort_by = ','.join([f'{key}:{value}' for key, value in sort_dict.items()])
+        return sort_by
+
+    def get_date_filters(self, date_params):
+        date_filters_dict = {}
+        lookup_to_operator = {'gte':'>=', 'lte': '<=', 'gt': '>', 'lt': '<'}
+
+        for key, value in date_params.items():
+            field_name, lookup = key.rsplit('__')
+            if lookup == 'isnull':
+                # TODO: There is no clear way of searching null values
+                date_filters_dict[field_name] = '=0' if value == 'True' else '>0'
+                continue
+
+            datetime_object = parse_datetime(value)
+            timestamp = int(datetime.combine(datetime_object, datetime.min.time()).timestamp())
+            date_filters_dict[field_name] = f'{lookup_to_operator[lookup]}{timestamp}'
+
+        return date_filters_dict
 
     def get_typesense_results(self, request):
         """
@@ -188,6 +285,7 @@ class TypesenseChangeList(ChangeList):
         filters_dict = {}
         custom_filters_dict = {}
         text_filters = [AllValuesFieldListFilter, ChoicesFieldListFilter]
+        datetime_fields = [models.fields.DateTimeField, models.fields.DateField, models.fields.TimeField]
 
         for filter_spec in self.filter_specs:
             if isinstance(filter_spec, BooleanFieldListFilter):
@@ -209,21 +307,33 @@ class TypesenseChangeList(ChangeList):
                     filters_dict[typesense_field] = lookup_value
 
             else:
-                if not hasattr(filter_spec, 'filter_by'):
-                    raise NotImplementedError(f'{filter_spec} is not supported')
+                if hasattr(filter_spec, 'field'):
+                    if any(isinstance(filter_spec.field, field_type) for field_type in datetime_fields):
+                        date_filters = self.get_date_filters(filter_spec.date_params)
+                        custom_filters_dict.update(date_filters)
+                        continue
 
-                # ALL CUSTOM FILTERS
-                custom_filters_dict.update(filter_spec.filter_by)
+                if hasattr(filter_spec, 'filter_by'):
+                    # ALL CUSTOM FILTERS
+                    custom_filters_dict.update(filter_spec.filter_by)
+                    continue
+
+                raise NotImplementedError(f'{filter_spec} is not supported')
 
         filter_by = ' && '.join([f'{key}:={value}' for key, value in filters_dict.items()])
         filter_by += ' && '.join([f'{key}:{value}' for key, value in custom_filters_dict.items()])
+
+        # Set ordering.
+        ordering = self.get_ordering(request)
+        sort_by = self.get_sort_by(ordering)
 
         # Apply django_typesense search results
         query = self.query or "*"
         results = self.model_admin.get_typesense_search_results(
             query,
             self.page_num,
-            filter_by=filter_by
+            filter_by=filter_by,
+            sort_by=sort_by
         )
 
         # Set query string for clearing all filters.
@@ -231,4 +341,5 @@ class TypesenseChangeList(ChangeList):
             new_params=remaining_lookup_params,
             remove=self.get_filters_params(),
         )
+
         return results

@@ -23,6 +23,19 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
             css=super_media._css,
         )
 
+    def get_sortable_by(self, request):
+        sortable_fields = super().get_sortable_by(request)
+        # Remove fields that sort has not been enabled in typesense schema
+        def is_sortable(values):
+            default_sortable_data_types = {'int32', 'int64', 'float', 'bool'}
+            if values['type'] in default_sortable_data_types:
+                return values.get('sort', True)
+
+            return values.get('sort', False)
+
+        typesense_sortable_fields = {key for key, values in self.model.typesense_fields.items() if is_sortable(values)}
+        return set(sortable_fields).intersection(typesense_sortable_fields)
+
     def get_results(self, request):
         # This is like ModelAdmin.get_queryset(
         return typesense_search(
@@ -44,7 +57,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
             results, per_page, orphans, allow_empty_first_page, self.model
         )
 
-    def get_typesense_search_results(self, search_term, page_num, filter_by):
+    def get_typesense_search_results(self, search_term, page_num, filter_by, sort_by):
         """
         Return a tuple containing a queryset to implement the django_typesense
         and a boolean indicating if the results may contain duplicates.
@@ -55,6 +68,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
             query_by=self.model.query_by_fields,
             page=page_num,
             per_page=self.list_per_page,
-            filter_by=filter_by
+            filter_by=filter_by,
+            sort_by=sort_by
         )
         return results
