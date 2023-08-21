@@ -1,7 +1,5 @@
 import logging
 
-from copy import deepcopy
-
 from django.db import models
 
 from typesense.exceptions import ObjectNotFound
@@ -67,7 +65,7 @@ class TypeSenseMixin(models.Model):
         return fields
 
     def get_typesense_dict(self):
-        return {}
+        raise NotImplementedError
 
     @classmethod
     def _get_typesense_schema(cls):

@@ -244,20 +244,21 @@ class TypesenseChangeList(ChangeList):
         sort_by = ','.join([f'{key}:{value}' for key, value in sort_dict.items()])
         return sort_by
 
-    def get_date_filters(self, date_params):
+    def get_date_filters(self, filter_spec):
         date_filters_dict = {}
         lookup_to_operator = {'gte':'>=', 'lte': '<=', 'gt': '>', 'lt': '<'}
 
-        for key, value in date_params.items():
-            field_name, lookup = key.rsplit('__')
-            if lookup == 'isnull':
-                # TODO: There is no clear way of searching null values
-                date_filters_dict[field_name] = '=0' if value == 'True' else '>0'
-                continue
+        if hasattr(filter_spec, 'date_params'):
+            for key, value in date_params.items():
+                field_name, lookup = key.rsplit('__')
+                if lookup == 'isnull':
+                    # TODO: There is no clear way of searching null values
+                    date_filters_dict[field_name] = '=0' if value == 'True' else '>0'
+                    continue
 
-            datetime_object = parse_datetime(value)
-            timestamp = int(datetime.combine(datetime_object, datetime.min.time()).timestamp())
-            date_filters_dict[field_name] = f'{lookup_to_operator[lookup]}{timestamp}'
+                datetime_object = parse_datetime(value)
+                timestamp = int(datetime.combine(datetime_object, datetime.min.time()).timestamp())
+                date_filters_dict[field_name] = f'{lookup_to_operator[lookup]}{timestamp}'
 
         return date_filters_dict
 
@@ -284,8 +285,8 @@ class TypesenseChangeList(ChangeList):
         # we let every list filter modify the queryset to its liking.
         filters_dict = {}
         custom_filters_dict = {}
-        text_filters = [AllValuesFieldListFilter, ChoicesFieldListFilter]
-        datetime_fields = [models.fields.DateTimeField, models.fields.DateField, models.fields.TimeField]
+        text_filters = (AllValuesFieldListFilter, ChoicesFieldListFilter)
+        datetime_fields = (models.fields.DateTimeField, models.fields.DateField, models.fields.TimeField)
 
         for filter_spec in self.filter_specs:
             if isinstance(filter_spec, BooleanFieldListFilter):
@@ -294,7 +295,7 @@ class TypesenseChangeList(ChangeList):
                 if lookup_value:
                     filters_dict[filter_spec.field_path] = boolean_map[lookup_value]
 
-            elif any(isinstance(filter_spec, _filter) for _filter in text_filters):
+            elif isinstance(filter_spec, text_filters):
                 lookup_value = filter_spec.lookup_val
                 if lookup_value:
                     filters_dict[filter_spec.field_path] = lookup_value
@@ -307,21 +308,16 @@ class TypesenseChangeList(ChangeList):
                     filters_dict[typesense_field] = lookup_value
 
             else:
-                if hasattr(filter_spec, 'field'):
-                    if any(isinstance(filter_spec.field, field_type) for field_type in datetime_fields):
-                        date_filters = self.get_date_filters(filter_spec.date_params)
-                        custom_filters_dict.update(date_filters)
-                        continue
-
                 if hasattr(filter_spec, 'filter_by'):
                     # ALL CUSTOM FILTERS
-                    custom_filters_dict.update(filter_spec.filter_by)
-                    continue
+                    filters_dict.update(filter_spec.filter_by)
 
-                raise NotImplementedError(f'{filter_spec} is not supported')
+                if hasattr(filter_spec, 'field'):
+                    if isinstance(filter_spec.field, datetime_fields):
+                        date_filters = self.get_date_filters(filter_spec)
+                        filters_dict.update(date_filters)
 
-        filter_by = ' && '.join([f'{key}:={value}' for key, value in filters_dict.items()])
-        filter_by += ' && '.join([f'{key}:{value}' for key, value in custom_filters_dict.items()])
+        filter_by = ' && '.join([f'{key}:{value}' for key, value in filters_dict.items()])
 
         # Set ordering.
         ordering = self.get_ordering(request)

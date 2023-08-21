@@ -12,8 +12,6 @@ BOOLEAN_TRUES = ["y", "Y", "yes", "1", 1, True, "True", "true"]
 
 
 class TypesenseSearchAdminMixin(admin.ModelAdmin):
-    # TODO: Sorting should work with ModelAdmin.ordering
-    # TODO: Querying should work with ModelAdmin.search_fields
 
     @property
     def media(self):
