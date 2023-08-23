@@ -246,18 +246,31 @@ class TypesenseChangeList(ChangeList):
 
     def get_date_filters(self, filter_spec):
         date_filters_dict = {}
-        lookup_to_operator = {'gte':'>=', 'lte': '<=', 'gt': '>', 'lt': '<'}
+        lookup_to_operator = {'gte':'>=', 'gt': '>', 'lte': '<=', 'lt': '<'}
 
-        if hasattr(filter_spec, 'date_params'):
-            for key, value in date_params.items():
-                field_name, lookup = key.rsplit('__')
+        # django in-built & rangefilter
+        if hasattr(filter_spec, 'used_parameters'):
+            max_timestamp, min_timestamp = None, None
+            for key, value in filter_spec.used_parameters.items():
+                if not value:
+                    continue
+                field_name = filter_spec.field.attname
+                _, lookup = key.rsplit('__', maxsplit=1)
                 if lookup == 'isnull':
-                    # TODO: There is no clear way of searching null values
-                    date_filters_dict[field_name] = '=0' if value == 'True' else '>0'
+                    # Null search is not supported in typesense
                     continue
 
                 datetime_object = parse_datetime(value)
                 timestamp = int(datetime.combine(datetime_object, datetime.min.time()).timestamp())
+
+                if lookup in ['gte', 'gt']:
+                    min_timestamp = timestamp
+                else:
+                    max_timestamp = timestamp
+
+            if max_timestamp and min_timestamp:
+                date_filters_dict[field_name] = f'[{min_timestamp}..{max_timestamp}]'
+            elif max_timestamp or min_timestamp:
                 date_filters_dict[field_name] = f'{lookup_to_operator[lookup]}{timestamp}'
 
         return date_filters_dict
