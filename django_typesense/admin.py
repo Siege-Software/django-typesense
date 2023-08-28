@@ -9,7 +9,6 @@ from django.core.exceptions import PermissionDenied
 from django.db import transaction, router
 from django.forms import forms
 from django.http import JsonResponse, HttpResponseRedirect
-from django.template.loader import render_to_string
 from django.template.response import TemplateResponse, SimpleTemplateResponse
 from django.utils.translation import gettext as _
 from django.utils.translation import ngettext

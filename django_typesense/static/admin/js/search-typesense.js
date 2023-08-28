@@ -6,11 +6,10 @@
                     changelist_form.fadeTo('fast', 0.5).promise().then(() => {
                         changelist_form.html($(response['html']).find('#changelist-form').html());
                         changelist_form.fadeTo('fast', 1);
-                        // searchbar.val(user_input.val());
                     })
                 })
                 .fail(function( jqxhr, textStatus, error ) {
-                    var err = textStatus + ", " + error;
+                    const err = textStatus + ", " + error;
                     console.log( "Request Failed: " + err );
                     changelist_form.html('Sorry. An error occurred on our end.');
                 });
@@ -19,11 +18,11 @@
         const searchbar = $("#searchbar");
         const changelist_form = $('#changelist-form');
         const delay_by_in_ms = 0;
+        const endpoint = window.location.origin + window.location.pathname
         let scheduled_function = false;
-        let endpoint = window.location.origin + window.location.pathname
 
         searchbar.on('input', function () {
-            let search_value = $(this).val().trim();
+            const search_value = $(this).val().trim();
             const search_parameters = {q:search_value};
             const urlParams = new URLSearchParams(window.location.search);
             const request_parameters = Object.assign(search_parameters, urlParams);
