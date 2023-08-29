@@ -16,25 +16,42 @@ class TypesenseSearchPaginator(Paginator):
 
     def mofify_results(self):
         """
-        Do whatever is required to present the values correctly in the admin
+        Do whatever is required to present the values correctly in the admin.
+        - Remove non-model fields
+        - Remove unsupported fields e.g ForeignKey
 
         Returns:
             A list of model instances
         """
 
-        model_field_names = set((local_field.name for local_field in self.model._meta.local_fields))
-        fields_to_remove = set(self.model.typesense_fields.keys()).difference(model_field_names)
-        date_fields = (models.fields.DateTimeField, models.fields.DateField, models.fields.TimeField)
+        model_field_names = set(
+            (local_field.name for local_field in self.model._meta.local_fields)
+        )
+        unsupported_field_types = ["ForeignKey", "ManyToManyField", "OneToOneField"]
+        unsupported_fields = [
+            field.name
+            for field in self.model._meta.fields
+            if field.get_internal_type() in unsupported_field_types
+        ]
+        fields_to_remove = set(self.model.typesense_fields.keys()).difference(
+            model_field_names
+        )
+        fields_to_remove.update(set(unsupported_fields))
+        date_fields = (
+            models.fields.DateTimeField,
+            models.fields.DateField,
+            models.fields.TimeField,
+        )
 
         def get_result(hit):
             result = {}
-            for key, value in hit['document'].items():
+            for key, value in hit["document"].items():
                 if key in fields_to_remove:
                     continue
                 if isinstance(self.model._meta.get_field(key), date_fields) and value:
                     value = datetime.fromtimestamp(value)
 
-                result.update({key:value})
+                result.update({key: value})
 
                 # TODO: set foreignkeys
             return result

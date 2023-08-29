@@ -9,12 +9,12 @@
 Faster Django Admin powered by [Typesense](https://typesense.org/)
 
 ## TODOs
-- Sorting
-- Live Search
+- Live Search (Admin Filters)
 - Performance comparison stats
 
-## Unsupported django admin features
+## Unsupported django admin `list_display` features
 - Custom admin [display functions](https://docs.djangoproject.com/en/4.2/ref/contrib/admin/#django.contrib.admin.display)
+- ForeignKeys and OneToOneFields
 
 ## Credits
 Some concepts were borrowed from [django-typesense](https://github.com/jkoestinger/django-typesense)
@@ -48,10 +48,10 @@ class MyModelManager(models.Manager):
             "name": "field1", "type": "string",
         },
         {
-            "name": "field2", "type": "string"
+            "name": "field2", "type": "int64"
         },
         {
-            "name": "field3", "type": "string"
+            "name": "field3", "type": "string[]"
         },
         {
             "name": "date_created", "type": "int64"
@@ -66,7 +66,8 @@ class MyModelManager(models.Manager):
     )
 
     def get_typesense_dict(self):
-        """Create a data structure that can be serialized as JSON for Typesense fields.
+        """
+        Create a data structure that can be serialized as JSON for Typesense fields.
 
         Normalize the structure if required.
 
