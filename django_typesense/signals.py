@@ -17,4 +17,4 @@ def pre_delete_typesense_models(sender, instance, **kwargs):
     if not issubclass(sender, TypeSenseMixin):
         return
 
-    instance.delete_typesense_document()
+    delete_typesense_document(instance)

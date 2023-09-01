@@ -58,7 +58,7 @@ def bulk_update_typesense_records(
     records_queryset: QuerySet, collection_name: str = None
 ) -> None:
     """
-    This method updates Typesense records for both queryset .update() calls from Typesense mixin subclasses.
+    This method updates Typesense records for both objs .update() calls from Typesense mixin subclasses.
     This function should be called on every model update statement for data consistency
 
     Parameters:
@@ -68,11 +68,11 @@ def bulk_update_typesense_records(
     Returns:
         None
     """
-    from django_typesense.models import TypesenseUpdateDeleteQuerySetManager
+    from django_typesense.managers import TypesenseQuerySet
 
-    if not isinstance(records_queryset, TypesenseUpdateDeleteQuerySetManager):
+    if not isinstance(records_queryset, TypesenseQuerySet):
         logger.error(
-            f"The queryset for {records_queryset.model.__name__} does not use TypesenseUpdateDeleteQuerySetManager "
+            f"The objs for {records_queryset.model.__name__} does not use TypesenseQuerySet "
             f"as it's manager. Please update the model manager for the class to use Typesense."
         )
         return
@@ -83,7 +83,7 @@ def bulk_update_typesense_records(
         except Exception:
             raise Exception(
                 "Pagination may yield inconsistent results with an unordered object_list. "
-                "Please provide an ordered queryset"
+                "Please provide an ordered objs"
             )
 
     if not collection_name:
@@ -111,14 +111,14 @@ def bulk_update_typesense_records(
 
 def bulk_delete_typesense_records(document_ids: list, collection_name: str) -> None:
     """
-    This method deletes Typesense records for queryset .delete() calls from Typesense mixin subclasses
+    This method deletes Typesense records for objs .delete() calls from Typesense mixin subclasses
 
     Parameters:
-    document_ids (list): the list of document IDs to be deleted
-    collection_name (str): The collection name for the documents, for delete the collection name is required
+        document_ids (list): the list of document IDs to be deleted
+        collection_name (str): The collection name for the documents, for delete the collection name is required
 
     Returns:
-    None
+        None
 
     """
     try:

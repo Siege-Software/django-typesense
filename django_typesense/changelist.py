@@ -188,7 +188,7 @@ class TypesenseChangeList(ChangeList):
             order_params = params[ORDER_VAR].split(".")
             for p in order_params:
                 try:
-                    none, pfx, idx = p.rpartition("-")
+                    _, pfx, idx = p.rpartition("-")
                     field_name = self.list_display[int(idx)]
                     order_field = self.get_ordering_field(field_name)
                     if not order_field:
@@ -215,6 +215,8 @@ class TypesenseChangeList(ChangeList):
 
     def get_sort_by(self, ordering):
         sort_dict = {}
+        collection_class = self.model.get_collection_class()
+        fields = collection_class.fields
 
         for param in ordering:
             if param.startswith('-'):
@@ -229,15 +231,11 @@ class TypesenseChangeList(ChangeList):
             #     sort_dict['id'] = order
             #     continue
 
-            field_schema_info = self.model.typesense_fields.get(field_name)
-            if not field_schema_info:
+            if not fields.get(field_name):
                 continue
 
-            if not field_schema_info.get('sort') and field_schema_info['type'] == 'string':
-                raise ValueError(
-                    f"Sorting on field '{field_name}' or type 'string' is only allowed if the sort property is "
-                    f"enabled in the collection schema."
-                )
+            if not fields[field_name].sort:
+                continue
 
             sort_dict[field_name] = order
 
@@ -248,7 +246,6 @@ class TypesenseChangeList(ChangeList):
         date_filters_dict = {}
         lookup_to_operator = {'gte':'>=', 'gt': '>', 'lte': '<=', 'lt': '<'}
 
-        # django in-built & rangefilter
         if hasattr(filter_spec, 'used_parameters'):
             max_timestamp, min_timestamp = None, None
             for key, value in filter_spec.used_parameters.items():
@@ -295,9 +292,8 @@ class TypesenseChangeList(ChangeList):
             self.has_active_filters,
         ) = self.get_filters(request)
 
-        # we let every list filter modify the queryset to its liking.
+        # we let every list filter modify the objs to its liking.
         filters_dict = {}
-        custom_filters_dict = {}
         text_filters = (AllValuesFieldListFilter, ChoicesFieldListFilter)
         datetime_fields = (models.fields.DateTimeField, models.fields.DateField, models.fields.TimeField)
 

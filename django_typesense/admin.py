@@ -13,13 +13,10 @@ from django.template.response import TemplateResponse, SimpleTemplateResponse
 from django.utils.translation import gettext as _
 from django.utils.translation import ngettext
 
-from django_typesense.methods import typesense_search
+from django_typesense.utils import typesense_search
 from django_typesense.paginator import TypesenseSearchPaginator
 
 logger = logging.getLogger(__name__)
-
-
-BOOLEAN_TRUES = ["y", "Y", "yes", "1", 1, True, "True", "true"]
 
 
 class TypesenseSearchAdminMixin(admin.ModelAdmin):
@@ -217,21 +214,8 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
 
     def get_sortable_by(self, request):
         sortable_fields = super().get_sortable_by(request)
-
-        # Remove fields that sort has not been enabled in typesense schema
-        def is_sortable(values):
-            default_sortable_data_types = {"int32", "int64", "float", "bool"}
-            if values["type"] in default_sortable_data_types:
-                return values.get("sort", True)
-
-            return values.get("sort", False)
-
-        typesense_sortable_fields = {
-            key
-            for key, values in self.model.typesense_fields.items()
-            if is_sortable(values)
-        }
-        return set(sortable_fields).intersection(typesense_sortable_fields)
+        collection_class = self.model.get_collection_class()
+        return set(sortable_fields).intersection(collection_class.sortable_fields)
 
     def get_results(self, request):
         # This is like ModelAdmin.get_queryset(
@@ -256,7 +240,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
 
     def get_typesense_search_results(self, search_term, page_num, filter_by, sort_by):
         """
-        Return a tuple containing a queryset to implement the django_typesense
+        Return a tuple containing a objs to implement the django_typesense
         and a boolean indicating if the results may contain duplicates.
         """
         results = typesense_search(

@@ -2,8 +2,9 @@
 [![codecov](https://codecov.io/gh/Siege-Software/django-typesense/branch/main/graph/badge.svg?token=S4W0E84821)](https://codecov.io/gh/Siege-Software/django-typesense)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 
-[!WARNING]  
-**This package is in the initial development phase. Do not use in production environment.**
+
+> [!WARNING]  
+> **This package is in the initial development phase. Do not use in production environment.**
 
 ## What is it?
 Faster Django Admin powered by [Typesense](https://typesense.org/)
@@ -33,7 +34,7 @@ You will need to set up the typesense server on your machine.
 ### Update the model to inherit from the Typesense model mixin
 
 ```
-from django_typesense.models import TypeSenseMixin, TypesenseUpdateDeleteQuerySetManager
+from django_typesense.models import TypesenseModelMixin, TypesenseQuerySet
 
 class MyModelManager(models.Manager):
     """Manager for class :class:`.models.MyModelName`
@@ -93,18 +94,18 @@ class MyModelManager(models.Manager):
             django.db.models.query.QuerySet: Queryset with instances of \
             :class:`.models.Work`
         """
-        return TypesenseUpdateDeleteQuerySetManager(
+        return TypesenseQuerySet(
             self.model, using=self._db
         )
 
 
-class MyModelName(TypeSenseMixin)
+class MyModelName(TypesenseModelMixin)
     ...
     
     objects = MyModelManager()
 ```
 
-`TypesenseUpdateDeleteQuerySetManager` is required to automatically index model changes on create, update and delete
+`TypesenseQuerySet` is required to automatically index model changes on create, update and delete
 
 ### Admin Setup
 To update a model admin to display and search from the model Typesense collection, the admin class should inherit from the TypesenseSearchAdminMixin
