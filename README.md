@@ -1,24 +1,24 @@
 # django typesense
 [![codecov](https://codecov.io/gh/Siege-Software/django-typesense/branch/main/graph/badge.svg?token=S4W0E84821)](https://codecov.io/gh/Siege-Software/django-typesense)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+![PyPI download month](https://img.shields.io/pypi/dm/django-typesense.svg)
+[![PyPI version](https://badge.fury.io/py/django-typesense.svg)](https://pypi.python.org/pypi/django-typesense/)
+![Python versions](https://img.shields.io/badge/python-%3E%3D3.8-brightgreen)
+![Django Versions](https://img.shields.io/badge/django-%3E%3D4-brightgreen)
 
 
-> [!WARNING]  
+> ⚠️
 > **This package is in the initial development phase. Do not use in production environment.**
 
 ## What is it?
 Faster Django Admin powered by [Typesense](https://typesense.org/)
 
 ## TODOs
-- Live Search (Admin Filters)
 - Performance comparison stats
 
-## Unsupported django admin `list_display` features
-- Custom admin [display functions](https://docs.djangoproject.com/en/4.2/ref/contrib/admin/#django.contrib.admin.display)
-- ForeignKeys and OneToOneFields
-
-## Credits
-Some concepts were borrowed from [django-typesense](https://github.com/jkoestinger/django-typesense)
+## Note on ForeignKeys and OneToOneFields
+- While the data in the foreign keys can be indexed, displaying them on the admin will trigger database queries that will negatively affect performance.
+- We recommend indexing the string representation of the foreignkey as a model property to enable display on admin.
 
 ## How to use
 `pip install django-typesense`

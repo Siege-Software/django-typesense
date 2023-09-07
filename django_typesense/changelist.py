@@ -149,7 +149,7 @@ class TypesenseChangeList(ChangeList):
         # Get the list of objects to display on this page.
         if (self.show_all and can_show_all) or not multi_page:
             # Reuse values defined in paginator
-            result_list = [self.model(**result) for result in paginator.results]
+            result_list = paginator.results
         else:
             try:
                 result_list = paginator.page(self.page_num).object_list
