@@ -1,6 +1,8 @@
+import json
 from decimal import Decimal
 from datetime import datetime, date
 from typing import Optional
+from operator import attrgetter
 
 
 class TypesenseField:
@@ -15,6 +17,8 @@ class TypesenseField:
         index: bool = True,
         optional: bool = False,
         facet: bool = False,
+        infix: bool = False,
+        locale: str = ''
     ):
         self._value = value
         self._name = None
@@ -22,14 +26,8 @@ class TypesenseField:
         self.index = index
         self.optional = optional
         self.facet = facet
-        self._attrs = {
-            'name': self.name,
-            'type': self._field_type,
-            'sort': self.sort,
-            'index': self.index,
-            'optional': self.optional,
-            'facet': self.facet
-        }
+        self.infix = infix
+        self.locale = locale
 
     def __str__(self):
         return f"{self}: {self.name}"
@@ -40,10 +38,19 @@ class TypesenseField:
 
     @property
     def attrs(self):
-        return self._attrs
+        return {
+            'name': self.name,
+            'type': self._field_type,
+            'sort': self.sort,
+            'index': self.index,
+            'optional': self.optional,
+            'facet': self.facet,
+            'infix': self.infix,
+            'locale': self.locale
+        }
 
     def value(self, obj):
-        __value = getattr(obj, self._value)
+        __value = attrgetter(self._value)(obj)
         if callable(__value):
             return __value()
 
@@ -55,6 +62,10 @@ class TypesenseField:
 
 class TypesenseCharField(TypesenseField):
     _field_type = "string"
+
+    def value(self, obj):
+        __value = super().value(obj)
+        return str(__value) if __value else __value
 
 
 class TypesenseSmallIntegerField(TypesenseField):
@@ -73,8 +84,15 @@ class TypesenseFloatField(TypesenseField):
 
 
 class TypesenseDecimalField(TypesenseField):
-    _field_type = "float"
+    """
+    String type is preferred over float
+    """
+    _field_type = "string"
     _sort = True
+
+    def value(self, obj):
+        __value = super().value(obj)
+        return str(__value)
 
     def to_python(self, value):
         return Decimal(value)
@@ -96,17 +114,27 @@ class TypesenseDateTimeField(TypesenseBigIntegerField):
 
 
 class TypesenseJSONField(TypesenseField):
-    _field_type = "object"
+    """
+    `string` is preferred over `object`
+    """
+    _field_type = "string"
+
+    def value(self, obj):
+        __value = super().value(obj)
+        return json.dumps(__value, default=str)
 
     def to_python(self, value):
-        return value
+        return json.loads(value)
 
 
 class TypesenseArrayField(TypesenseField):
     def __init__(self, base_field: TypesenseField, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.base_field = base_field
-        self._field_type = f"{self._field_type}[]"
+        self._field_type = f"{self.base_field._field_type}[]"
+
+    def value(self, obj):
+        return list(map(self.base_field.value, obj))
 
     def to_python(self, value):
         return list(map(self.base_field.to_python, value))

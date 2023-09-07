@@ -215,8 +215,8 @@ class TypesenseChangeList(ChangeList):
 
     def get_sort_by(self, ordering):
         sort_dict = {}
-        collection_class = self.model.get_collection_class()
-        fields = collection_class.fields
+        collection = self.model.get_collection()
+        fields = collection.fields
 
         for param in ordering:
             if param.startswith('-'):
@@ -227,9 +227,9 @@ class TypesenseChangeList(ChangeList):
                 order = 'asc'
 
             # Temporarily left out: Could not find a field named `id` in the schema for sorting
-            # if field_name == 'pk':
-            #     sort_dict['id'] = order
-            #     continue
+            if field_name in ['pk', 'id']:
+                # sort_dict['id'] = order
+                continue
 
             if not fields.get(field_name):
                 continue

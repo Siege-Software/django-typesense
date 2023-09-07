@@ -68,7 +68,7 @@ def bulk_update_typesense_records(
     Returns:
         None
     """
-    from django_typesense.managers import TypesenseQuerySet
+    from django_typesense.mixins import TypesenseQuerySet
 
     if not isinstance(records_queryset, TypesenseQuerySet):
         logger.error(

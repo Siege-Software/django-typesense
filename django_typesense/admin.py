@@ -214,13 +214,14 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
 
     def get_sortable_by(self, request):
         sortable_fields = super().get_sortable_by(request)
-        collection_class = self.model.get_collection_class()
-        return set(sortable_fields).intersection(collection_class.sortable_fields)
+        collection = self.model.get_collection()
+        return set(sortable_fields).intersection(collection.sortable_fields)
 
     def get_results(self, request):
-        # This is like ModelAdmin.get_queryset(
+        # This is like ModelAdmin.get_queryset()
+        collection = self.model.get_collection()
         return typesense_search(
-            collection_name=self.model.get_typesense_schema_name(), q="*"
+            collection_name=collection.schema_name, q="*"
         )
 
     def get_changelist(self, request, **kwargs):
@@ -243,10 +244,11 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         Return a tuple containing a objs to implement the django_typesense
         and a boolean indicating if the results may contain duplicates.
         """
+        collection = self.model.get_collection()
         results = typesense_search(
-            collection_name=self.model.get_typesense_schema_name(),
+            collection_name=collection.schema_name,
             q=search_term or "*",
-            query_by=self.model.query_by_fields,
+            query_by=collection.query_by_fields,
             page=page_num,
             per_page=self.list_per_page,
             filter_by=filter_by,

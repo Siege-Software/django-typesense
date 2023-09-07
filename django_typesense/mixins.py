@@ -1,6 +1,22 @@
 from django.db import models
 
-from django_typesense.managers import TypesenseQuerySet
+
+class TypesenseQuerySet(models.QuerySet):
+    def delete(self):
+        assert issubclass(self.model, TypesenseModelMixin), (
+            f"Model `{self.model}` must inherit `TypesenseMixin` to use the TypesenseQueryset Manager"
+        )
+        collection = self.model.get_collection(self, many=True)
+        collection.delete()
+        return super().delete()
+
+    def update(self, **kwargs):
+        assert issubclass(self.model, TypesenseModelMixin), (
+            f"Model `{self.model}` must inherit `TypesenseMixin` to use the TypesenseQueryset Manager"
+        )
+        collection = self.model.get_collection(self, many=True)
+        collection.update()
+        return super().update(**kwargs)
 
 
 class TypesenseModelMixin(models.Model):
@@ -29,5 +45,6 @@ class TypesenseModelMixin(models.Model):
         """
         Return the collection obj.
         """
-        collection_class = cls.collection_class()
+        collection_class = cls.get_collection_class()
         return collection_class(*args, **kwargs)
+
