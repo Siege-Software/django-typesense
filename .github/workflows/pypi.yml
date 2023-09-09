@@ -7,9 +7,14 @@ on:  # yamllint disable-line rule:truthy
       - 'v*'
 
 jobs:
-  publish:
+  pypi-publish:
     name: PyPI Release
     runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/django-typesense
+    permissions:
+      id-token: write
 
     steps:
       - name: Checkout
