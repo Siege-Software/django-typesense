@@ -1,16 +1,7 @@
+import copy
+
 from django.core.paginator import Paginator
 from django.utils.functional import cached_property
-
-
-class TypesenseModel(object):
-    def __init__(self, _data, _metadata):
-        for key in _data:
-            setattr(self, key, _data[key])
-        self._meta = _metadata
-
-    @property
-    def pk(self):
-        return getattr(self, 'id')
 
 
 class TypesenseSearchPaginator(Paginator):
@@ -19,6 +10,7 @@ class TypesenseSearchPaginator(Paginator):
     ):
         super().__init__(object_list, per_page, orphans, allow_empty_first_page)
         self.model = model
+        self.collection_class = self.model.get_collection_class()
         self.results = self.prepare_results()
 
     def prepare_results(self):
@@ -26,9 +18,29 @@ class TypesenseSearchPaginator(Paginator):
         Do whatever is required to present the values correctly in the admin.
         """
         documents = (hit['document'] for hit in self.object_list["hits"])
-        data_list = self.model.get_collection(data=documents).validated_data
-        metadata = self.model._meta
-        return [TypesenseModel(data, metadata) for data in data_list]
+        collection = self.model.get_collection(data=documents)
+        model_field_names = set((local_field.name for local_field in self.model._meta.local_fields))
+        results = []
+
+        for _data in collection.validated_data:
+            data = copy.deepcopy(_data)
+            properties = {}
+
+            for field_name in collection.fields.keys():
+                if field_name not in model_field_names:
+                    properties[field_name] = data.pop(field_name)
+
+            result_instance = self.model(**data)
+            for key, value in properties.items():
+                try:
+                    setattr(result_instance, key, value)
+                except AttributeError:
+                    # non-data descriptors
+                    result_instance.__dict__[key] = value
+
+            results.append(result_instance)
+
+        return results
 
     def page(self, number):
         """Return a Page object for the given 1-based page number."""

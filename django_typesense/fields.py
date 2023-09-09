@@ -133,8 +133,5 @@ class TypesenseArrayField(TypesenseField):
         self.base_field = base_field
         self._field_type = f"{self.base_field._field_type}[]"
 
-    def value(self, obj):
-        return list(map(self.base_field.value, obj))
-
     def to_python(self, value):
         return list(map(self.base_field.to_python, value))
