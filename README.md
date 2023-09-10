@@ -1,10 +1,13 @@
 # django typesense
+
+[![Build](https://github.com/Siege-Software/django-typesense/workflows/build/badge.svg?branch=main)](https://github.com/Siege-Software/django-typesense/actions?workflow=CI)
 [![codecov](https://codecov.io/gh/Siege-Software/django-typesense/branch/main/graph/badge.svg?token=S4W0E84821)](https://codecov.io/gh/Siege-Software/django-typesense)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 ![PyPI download month](https://img.shields.io/pypi/dm/django-typesense.svg)
 [![PyPI version](https://badge.fury.io/py/django-typesense.svg)](https://pypi.python.org/pypi/django-typesense/)
 ![Python versions](https://img.shields.io/badge/python-%3E%3D3.8-brightgreen)
-![Django Versions](https://img.shields.io/badge/django-%3E%3D4-brightgreen)
+![Django Versions](https://img.shields.io/badge/django-%3E%3D3.2-brightgreen)
+[![PyPI License](https://img.shields.io/pypi/l/django-typesense.svg)](https://pypi.python.org/pypi/django-typesense/)
 
 
 > [!WARNING]  
@@ -13,140 +16,158 @@
 ## What is it?
 Faster Django Admin powered by [Typesense](https://typesense.org/)
 
-## TODOs
-- Performance comparison stats
 
-## Note on ForeignKeys and OneToOneFields
-- While data from foreign keys can be indexed, displaying them on the admin will trigger database queries that will negatively affect performance.
-- We recommend indexing the string representation of the foreignkey as a model property to enable display on admin.
 
-## How to use
+## Quick Start Guide
+### Installation
 `pip install django-typesense`
 
-Install directly from github to test the most recent version
-```
-pip install git+https://github.com/SiegeSoftware/django-typesense.git
-```
+or install directly from github to test the most recent version
+
+`pip install git+https://github.com/SiegeSoftware/django-typesense.git`
 
 Add `django_typesense` to the list of installed apps.
-You will need to set up the typesense server on your machine.
 
-### Update the model to inherit from the Typesense model mixin
+Follow this [guide](https://typesense.org/docs/guide/install-typesense.html#option-1-typesense-cloud) to install and run typesense
+
+### Create Collections
+Throughout this guide, we’ll refer to the following models, which comprise a song catalogue application:
 
 ```
-from django_typesense.models import TypesenseModelMixin, TypesenseQuerySet
+from django.db import models
 
-class MyModelManager(models.Manager):
-    """Manager for class :class:`.models.MyModelName`
-    """
-    field1 = models...
-    field2 = models...
-    field3 = models...
-    date_created = models...
+
+class Genre(models.Model):
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
+class Artist(models.Model):
+    name = models.CharField(max_length=200)
+
+    def __str__(self):
+        return self.name
+
+
+class Song(models.Model):
+    title = models.CharField(max_length=100)
+    genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
+    release_date = models.DateField(blank=True, null=True)
+    artists = models.ManyToManyField(Artist)
+    number_of_comments = models.IntegerField(default=0)
+    number_of_views = models.IntegerField(default=0)
+    duration = models.DurationField()
+    description = models.TextField()
+
+    def __str__(self):
+        return self.title
+     
+    @property
+    def release_date_timestamp(self):
+        # read https://typesense.org/docs/0.25.0/api/collections.html#indexing-dates
+        return self.release_date.timestamp() if self.release_date else self.release_date
+      
+    def artist_names(self):
+        return list(self.artists.all().values_list('name', flat=True))
+        
+```
+
+For such an application, you might be interested in improving the search and load times on the song records list view.
+
+```
+from django_typesense.collections import TypesenseCollection
+from django_typesense import fields
+
+
+class SongCollection(TypesenseCollection):
+    # At least one of the indexed fields has to be provided as one of the `query_by_fields`. Must be a CharField
+    query_by_fields = 'title,artist_names'
     
-    typesense_fields = [
-        {
-            "name": "field1", "type": "string",
-        },
-        {
-            "name": "field2", "type": "int64"
-        },
-        {
-            "name": "field3", "type": "string[]"
-        },
-        {
-            "name": "date_created", "type": "int64"
-        }
-    ]
+    title = fields.TypesenseCharField()
+    genre_name = fields.TypesenseCharField(value='genre.name')
+    genre_id = fields.TypesenseSmallIntegerField()
+    release_date = fields.TypesenseDateField(value='release_date_timestamp', optional=True)
+    artist_names = fields.TypesenseArrayField(base_field=fields.TypesenseCharField(), value='artist_names')
+    number_of_comments = fields.SmallIntegerField(index=False, optional=True)
+    number_of_views = fields.SmallIntegerField(index=False, optional=True)
+    duration = fields.DurationField()
+```
 
-    typesense_default_sorting_field = 'date_created'
-    query_by_fields = ','.join(
-        [
-            'field1', 'field2', 'date_created'
-        ]
-    )
+It's okay to store fields that you don't intend to search but to display on the admin. Such fields should be marked as un-indexed e.g:
 
-    def get_typesense_dict(self):
-        """
-        Create a data structure that can be serialized as JSON for Typesense fields.
+    number_of_views = fields.SmallIntegerField(index=False, optional=True)
 
-        Normalize the structure if required.
-
-        Returns:
-            dict: JSON-serializable data structure
-        """
-
-        typesense_dict = {
-            'id': str(self.id),
-            'field1': self.field1,
-            'field2': self.field2,
-            'field3': self.field3,
-             'date_created': self.date_created.timestamp()
-        }
-
-        return typesense_dict
-
-    def get_queryset(self):
-        """
-        Get an optimized queryset.
-
-        Returns:
-            django.db.models.query.QuerySet: Queryset with instances of \
-            :class:`.models.Work`
-        """
-        return TypesenseQuerySet(
-            self.model, using=self._db
-        )
-
-
-class MyModelName(TypesenseModelMixin)
+Update the song model as follows:
+```
+class Song(models.Model):
     ...
-    
-    objects = MyModelManager()
+    collection_class = SongCollection
+    ...
 ```
 
-`TypesenseQuerySet` is required to automatically index model changes on create, update and delete
+How the value of a field is retrieved from a model instance:
+1. The collection field name is called as a property of the model instance
+2. If `value` is provided, it will be called as a property or method of the model instance
 
-### Admin Setup
-To update a model admin to display and search from the model Typesense collection, the admin class should inherit from the TypesenseSearchAdminMixin
+Where the collections live is totally dependent on you but we recommend having a `collections.py` file in the django app where the model you are creating a collection for is.
+
+> [!NOTE]  
+> We recommend displaying data from ForeignKey or OneToOne fields as string attributes using the display decorator to avoid triggering database queries that will negatively affect performance.
+
+### Admin Integration
+To make a model admin display and search from the model's Typesense collection, the admin class should inherit `TypesenseSearchAdminMixin`
 
 ```
 from django_typesense.admin import TypesenseSearchAdminMixin
 
-class MyModelAdmin(TypesenseSearchAdminMixin):
-    pass
+@admin.register(Song)
+class SongAdmin(TypesenseSearchAdminMixin):
+    ...
+    list_display = ['title', 'genre_name', 'release_date', 'number_of_views', 'duration']
+    
+    @admin.display(description='Genre')
+    def genre_name(self, obj):
+        return obj.genre.name
+    ...
 
 ```
 
-### Bulk indexing typesense collections
-To update or delete collection documents in bulk. Bulk updating is multi-threaded. 
-You might encounter poor performance when indexing large querysets. Suggestions on how to improve are welcome.
+### Indexing
+For the initial setup, you will need to index in bulk. Bulk updating is multi-threaded. Depending on your system specs, you should set the `batch_size` keyword argument.
 
 ```
-from django_typesense.methods import bulk_delete_typsense_records, bulk_update_typsense_records
-from .models import MyModel
-from django_typesense.typesense_client import client
+from django_typesense.utils import bulk_delete_typsense_records, bulk_update_typsense_records
 
-model_qs = Model.objects.all().order_by('date_created')  # querysets should be ordered
-bulk_update_typesense_records(model_qs)  # for bulk document indexing
-bulk_delete_typsense_records(model_qs)  # for bulk document deletiom
+model_qs = Song.objects.all().order_by('id')  # querysets should be ordered
+bulk_update_typesense_records(model_qs, batch_size=1024)
 ```
 
 # Custom Admin Filters
 To make use of custom admin filters, define a `filter_by` property in the filter definition.
-Define boolean typesense field `has_alien` that gets it's value from a model property.
+Define boolean typesense field `has_views` that gets it's value from a model property. This is example is not necessarily practical but for demo purposes.
 
 ```
-@property
-def has_alien(self):
-    # moon_aliens and mars_aliens are reverse foreign keys
-    return self.moon_aliens.exists() or self.mars_aliens.exists()
+# models.py
+class Song(models.Model):
+    ...
+    @property
+    def has_views(self):
+        return self.number_of_views > 0
+    ...
+
+# collections.py
+class SongCollection(TypesenseCollection):
+    ...
+    has_views = fields.TypesenseBooleanField()
+    ...
 ```
 
 ```
-class HasAlienFilter(admin.SimpleListFilter):
-    title = _('Has Alien')
-    parameter_name = 'has_alien'
+class HasViewsFilter(admin.SimpleListFilter):
+    title = _('Has Views')
+    parameter_name = 'has_views'
 
     def lookups(self, request, model_admin):
         return (
@@ -158,9 +179,9 @@ class HasAlienFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         # This is used by the default django admin
         if self.value() == 'True':
-            return queryset.filter(Q(mars_aliens__isnull=False) | Q(moon_aliens__isnull=False))
+            return queryset.filter(number_of_views__gt=0)
         elif self.value() == 'False':
-            return queryset.filter(mars_aliens__isnull=True, moon_aliens__isnull=True)
+            return queryset.filter(number_of_views=0)
             
         return queryset
 
@@ -168,44 +189,10 @@ class HasAlienFilter(admin.SimpleListFilter):
     def filter_by(self):
         # This is used by typesense
         if self.value() == 'True':
-            return {"has_alien": "=true"}
+            return {"has_views": "=true"}
         elif self.value() == 'False':
-            return {"has_alien": "!=false"}
+            return {"has_views": "!=false"}
 
         return {}
 ```
 
-
-## Release Process
-Each release has its own branch, called stable/version_number and any changes will be issued from those branches. 
-The main branch has the latest stable version
-
-## Contribution
-TBA
-
-```
-# clone the repo
-git clone https://gitlab.com/siege-software/packages/django_typesense.git
-git checkout -b <your_branch_name> stable/1.x.x
-
-# Set up virtual environment
-python3.8 -m venv venv
-source venv/bin/activate
-
-pip install -r requirements-dev.txt
-
-# Enable automatic pre-commit hooks
-pre-commit install
-```
-
-## Running Tests
-```
-cd tests
-pytest .
-```
-
-## Building the package
-```python -m build```
-
-## Installing the package from build
-``` pip install path/to/django_typesense-0.0.1.tar.gz```

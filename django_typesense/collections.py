@@ -1,9 +1,7 @@
-import copy
-from typing import Optional, List, Iterable, Any, Union, Dict
+from typing import Optional, Iterable, Union, Dict
 
-from django.db import models
 from django.db.models import QuerySet
-from django.utils.functional import cached_property, classproperty
+from django.utils.functional import cached_property
 from typesense.exceptions import ObjectNotFound
 
 from django_typesense.fields import TypesenseField, TypesenseCharField
@@ -48,6 +46,10 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
             self.data = []
 
     def get_fields(self) -> Dict[str, TypesenseField]:
+        """
+        Returns:
+            A dictionary of the fields names to the field definition for this collection
+        """
         fields = {}
 
         for attr in dir(self):
@@ -68,12 +70,16 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         return fields
 
     @classmethod
-    def _get_metadata(cls):
+    def _get_metadata(cls) -> dict:
         defined_meta_options = _COLLECTION_META_OPTIONS.intersection(set(dir(cls)))
         return {meta_option: getattr(cls, meta_option) for meta_option in defined_meta_options}
 
     @cached_property
-    def validated_data(self):
+    def validated_data(self) -> list:
+        """
+        Returns a list of the collection data with values converted into the correct Python objects
+        """
+
         _validated_data = []
 
         for obj in self.data:
@@ -90,21 +96,38 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         return f"{self.schema_name} TypesenseCollection"
 
     @property
-    def sortable_fields(self):
+    def sortable_fields(self) -> list:
         return [field.name for field in self.fields.values() if field.sort]
 
-    def get_field(self, name):
+    def get_field(self, name) -> TypesenseField:
+        """
+        Get the field with the provided name from the collection
+
+        Args:
+            name: the field name
+
+        Returns:
+            A TypesenseField
+        """
         return self.fields[name]
 
     @cached_property
-    def schema_fields(self):
+    def schema_fields(self) -> list:
+        """
+        Returns:
+            A list of dictionaries with field attributes needed by typesense for schema creation
+        """
         return [field.attrs for field in self.fields.values()]
 
     def _get_object_data(self, obj):
         return {field.name: field.value(obj) for field in self.fields.values()}
 
     @cached_property
-    def schema(self):
+    def schema(self) -> dict:
+        """
+        Returns:
+            The typesense schema
+        """
         return {
             "name": self.schema_name,
             "fields": self.schema_fields,
