@@ -14,9 +14,16 @@ _COLLECTION_META_OPTIONS = {
 }
 
 
-class TypesenseCollection:
+class TypesenseCollectionMeta(type):
 
-    query_by_fields: str
+    def __new__(cls, name, bases, namespace):
+        namespace['schema_name'] = namespace.get('schema_name') or name.lower()
+        return super().__new__(cls, name, bases, namespace)
+
+
+class TypesenseCollection(metaclass=TypesenseCollectionMeta):
+
+    query_by_fields: str = ''
     schema_name: Optional[str] = ''
     default_sorting_field: Optional[str] = ''
     token_separators: Optional[list] = []
