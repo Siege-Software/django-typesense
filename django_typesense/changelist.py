@@ -169,7 +169,7 @@ class TypesenseChangeList(ChangeList):
         self.multi_page = multi_page
         self.paginator = paginator
 
-    def get_ordering(self, request):
+    def get_typesense_ordering(self, request):
         """
         Return the list of ordering fields for the change list.
         First check the get_ordering() method in model admin, then check
@@ -329,7 +329,7 @@ class TypesenseChangeList(ChangeList):
         filter_by = ' && '.join([f'{key}:{value}' for key, value in filters_dict.items()])
 
         # Set ordering.
-        ordering = self.get_ordering(request)
+        ordering = self.get_typesense_ordering(request)
         sort_by = self.get_sort_by(ordering)
 
         # Apply django_typesense search results
