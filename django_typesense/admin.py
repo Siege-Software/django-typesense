@@ -213,15 +213,33 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         return template_response
 
     def get_sortable_by(self, request):
+        """
+        Get sortable fields; these are fields that sort is defaulted or set to True.
+
+        Args:
+            request: the HttpRequest
+
+        Returns:
+            A list of field names
+        """
+
         sortable_fields = super().get_sortable_by(request)
         collection = self.model.get_collection()
         return set(sortable_fields).intersection(collection.sortable_fields)
 
     def get_results(self, request):
-        # This is like ModelAdmin.get_queryset()
-        collection = self.model.get_collection()
+        """
+        Get all indexed data without any filtering or specific search terms. Works like `ModelAdmin.get_queryset()`
+
+        Args:
+            request: the HttpRequest
+
+        Returns:
+            A list of the typesense results
+        """
+
         return typesense_search(
-            collection_name=collection.schema_name, q="*"
+            collection_name=self.model.collection_class.schema_name, q="*"
         )
 
     def get_changelist(self, request, **kwargs):
@@ -241,14 +259,22 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
 
     def get_typesense_search_results(self, search_term, page_num, filter_by, sort_by):
         """
-        Return a tuple containing a objs to implement the django_typesense
-        and a boolean indicating if the results may contain duplicates.
+        Get the results from typesense with the provided filtering, sorting, pagination and search parameters applied
+
+        Args:
+            search_term: The search term provided in the search form
+            page_num: The requested page number
+            filter_by: The filtering parameters
+            sort_by: The sort parameters
+
+        Returns:
+            A list of typesense results
         """
-        collection = self.model.get_collection()
+
         results = typesense_search(
-            collection_name=collection.schema_name,
+            collection_name=self.model.collection_class.schema_name,
             q=search_term or "*",
-            query_by=collection.query_by_fields,
+            query_by=self.model.collection_class.query_by_fields,
             page=page_num,
             per_page=self.list_per_page,
             filter_by=filter_by,
