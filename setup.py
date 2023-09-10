@@ -4,7 +4,7 @@ setup(
     name="django_typesense",
     author="Siege Software",
     author_email="info@siege.ai",
-    version="0.1.1-alpha",
+    version="0.1.1",
     install_requires=[
         "django",
         "typesense",
