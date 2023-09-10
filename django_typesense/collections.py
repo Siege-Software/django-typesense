@@ -33,7 +33,6 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         assert self.query_by_fields, "`query_by_fields` must be specified in the collection definition"
         assert not all([obj, data]), "`obj` and `data` cannot be provided together"
 
-        self.schema_name = self.schema_name or self.__class__.__name__.lower()
         self._meta = self._get_metadata()
         self.fields = self.get_fields()
 
@@ -45,6 +44,8 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
                 self.data = list(map(self._get_object_data, obj))
             else:
                 self.data = [self._get_object_data(obj)]
+        else:
+            self.data = []
 
     def get_fields(self) -> Dict[str, TypesenseField]:
         fields = {}
@@ -128,6 +129,9 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         return client.collections[self.schema_name].retrieve()
 
     def delete(self):
+        if not self.data:
+            return
+
         delete_params = {
             "filter_by": f"id:{[obj['id'] for obj in self.data]}"
         }
@@ -138,6 +142,9 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
             pass
 
     def update(self):
+        if not self.data:
+            return
+
         try:
             return client.collections[self.schema_name].documents.import_(self.data, {"action": "upsert"})
         except ObjectNotFound:
