@@ -33,6 +33,10 @@ class TypesenseField:
         return f"{self}: {self.name}"
 
     @property
+    def field_type(self):
+        return self._field_type
+
+    @property
     def name(self):
         return self._name
 
@@ -113,6 +117,11 @@ class TypesenseDateTimeField(TypesenseBigIntegerField):
         return datetime.fromtimestamp(value)
 
 
+class TypesenseTimeField(TypesenseBigIntegerField):
+    def to_python(self, value):
+        return datetime.fromtimestamp(value).time()
+
+
 class TypesenseJSONField(TypesenseField):
     """
     `string` is preferred over `object`
@@ -135,3 +144,6 @@ class TypesenseArrayField(TypesenseField):
 
     def to_python(self, value):
         return list(map(self.base_field.to_python, value))
+
+
+TYPESENSE_DATETIME_FIELDS = [TypesenseDateTimeField, TypesenseDateField, TypesenseTimeField]

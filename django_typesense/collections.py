@@ -1,9 +1,16 @@
+import django
+
 from typing import Optional, Iterable, Union, Dict
 
 from django.db.models import QuerySet
 from django.utils.functional import cached_property
-from typesense.exceptions import ObjectNotFound
 
+if django.VERSION < (4, 0):
+    from django.utils.decorators import classproperty
+else:
+    from django.utils.functional import classproperty
+
+from typesense.exceptions import ObjectNotFound
 from django_typesense.fields import TypesenseField, TypesenseCharField
 from django_typesense.typesense_client import client
 
@@ -45,15 +52,20 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         else:
             self.data = []
 
-    def get_fields(self) -> Dict[str, TypesenseField]:
+    @classmethod
+    def get_fields(cls) -> Dict[str, TypesenseField]:
         """
         Returns:
             A dictionary of the fields names to the field definition for this collection
         """
         fields = {}
+        # Avoid Recursion Erros
+        exclude_attributes = {'sortable_fields'}
 
-        for attr in dir(self):
-            attr_value = getattr(self, attr, None)
+        for attr in dir(cls):
+            if attr in exclude_attributes:
+                continue
+            attr_value = getattr(cls, attr, None)
             if not isinstance(attr_value, TypesenseField):
                 continue
 
@@ -95,11 +107,17 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
     def __str__(self):
         return f"{self.schema_name} TypesenseCollection"
 
-    @property
-    def sortable_fields(self) -> list:
-        return [field.name for field in self.fields.values() if field.sort]
+    @classproperty
+    def sortable_fields(cls) -> list:
+        """
+        Returns:
+            The names of sortable fields
+        """
+        fields = cls.get_fields()
+        return [field.name for field in fields.values() if field.sort]
 
-    def get_field(self, name) -> TypesenseField:
+    @classmethod
+    def get_field(cls, name) -> TypesenseField:
         """
         Get the field with the provided name from the collection
 
@@ -109,7 +127,8 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         Returns:
             A TypesenseField
         """
-        return self.fields[name]
+        fields = cls.get_fields()
+        return fields[name]
 
     @cached_property
     def schema_fields(self) -> list:
