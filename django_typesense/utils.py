@@ -27,7 +27,9 @@ def update_batch(documents_queryset: QuerySet, collection_class: TypesenseCollec
     logger.debug(f"Batch {batch_no} Updated with {len(collection.data)} records ✓")
 
 
-def bulk_update_typesense_records(records_queryset: QuerySet, batch_size: int = 1024) -> None:
+def bulk_update_typesense_records(
+        records_queryset: QuerySet, batch_size: int = 1024, num_threads: int = os.cpu_count()
+) -> None:
     """
     This method updates Typesense records for both objs .update() calls from Typesense mixin subclasses.
     This function should be called on every model update statement for data consistency
@@ -35,6 +37,7 @@ def bulk_update_typesense_records(records_queryset: QuerySet, batch_size: int = 
     Parameters:
         records_queryset (QuerySet): the QuerySet should be from a Typesense mixin subclass
         batch_size: how many objects are indexed in a single run
+        num_threads: the number of thread that will be used. defaults to `os.cpu_count()`
 
     Returns:
         None
@@ -60,9 +63,8 @@ def bulk_update_typesense_records(records_queryset: QuerySet, batch_size: int = 
 
     collection_class = records_queryset.model.collection_class
     paginator = Paginator(records_queryset, batch_size)
-    threads = os.cpu_count()
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=threads) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=num_threads) as executor:
         futures = []
         for page_no in paginator.page_range:
             documents_queryset = paginator.page(page_no).object_list

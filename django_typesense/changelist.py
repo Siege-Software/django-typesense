@@ -18,6 +18,8 @@ from django.db.models import OrderBy
 from django.utils.translation import gettext
 from django.utils.dateparse import parse_datetime
 
+from django_typesense.fields import TYPESENSE_DATETIME_FIELDS
+
 # Changelist settings
 ALL_VAR = "all"
 ORDER_VAR = "o"
@@ -215,8 +217,7 @@ class TypesenseChangeList(ChangeList):
 
     def get_sort_by(self, ordering):
         sort_dict = {}
-        collection = self.model.get_collection()
-        fields = collection.fields
+        fields = self.model.collection_class.get_fields()
 
         for param in ordering:
             if param.startswith('-'):
@@ -242,35 +243,53 @@ class TypesenseChangeList(ChangeList):
         sort_by = ','.join([f'{key}:{value}' for key, value in sort_dict.items()])
         return sort_by
 
-    def get_date_filters(self, filter_spec):
-        date_filters_dict = {}
-        lookup_to_operator = {'gte':'>=', 'gt': '>', 'lte': '<=', 'lt': '<'}
+    def get_search_filters(self, field_name: str, used_parameters: dict):
+        search_filters_dict = {}
+        if not used_parameters:
+            return search_filters_dict
 
-        if hasattr(filter_spec, 'used_parameters'):
-            max_timestamp, min_timestamp = None, None
-            for key, value in filter_spec.used_parameters.items():
-                if not value:
-                    continue
-                field_name = filter_spec.field.attname
-                _, lookup = key.rsplit('__', maxsplit=1)
-                if lookup == 'isnull':
-                    # Null search is not supported in typesense
-                    continue
+        lookup_to_operator = {'gte':'>=', 'gt': '>', 'lte': '<=', 'lt': '<', 'iexact': '=', 'exact': '='}
+        max_val, min_val, lookup, value = None, None, None, None
 
+        field = self.model.collection_class.get_field(field_name)
+
+        for key, value in used_parameters.items():
+            if not value:
+                continue
+
+            _, lookup = key.rsplit('__', maxsplit=1)
+            lookup = lookup or 'exact'
+            if lookup == 'isnull':
+                # Null search is not supported in typesense
+                continue
+
+            if isinstance(field, tuple(TYPESENSE_DATETIME_FIELDS)):
                 datetime_object = parse_datetime(value)
-                timestamp = int(datetime.combine(datetime_object, datetime.min.time()).timestamp())
+                value = int(datetime.combine(datetime_object, datetime.min.time()).timestamp())
 
+            if str(value).isdigit():
                 if lookup in ['gte', 'gt']:
-                    min_timestamp = timestamp
-                else:
-                    max_timestamp = timestamp
+                    min_val = value
+                if lookup in ['lte', 'lt']:
+                    max_val = value
 
-            if max_timestamp and min_timestamp:
-                date_filters_dict[field_name] = f'[{min_timestamp}..{max_timestamp}]'
-            elif max_timestamp or min_timestamp:
-                date_filters_dict[field_name] = f'{lookup_to_operator[lookup]}{timestamp}'
+        if max_val and min_val:
+            search_filters_dict[field_name] = f'[{min_val}..{max_val}]'
+            value = None
+        elif max_val or min_val:
+            search_filters_dict[field_name] = f'{lookup_to_operator[lookup]}{min_val or max_val}'
+            value = None
 
-        return date_filters_dict
+        if value:
+            if field.field_type == 'string':
+                search_filters_dict[field_name] = f':{lookup_to_operator[lookup]}{value}'
+            elif field.field_type == 'bool':
+                boolean_map = {'0': 'false', '1': 'true'}
+                search_filters_dict[field_name] = boolean_map[value]
+            else:
+                search_filters_dict[field_name] = f'{lookup_to_operator[lookup]}{value}'
+
+        return search_filters_dict
 
     def get_typesense_results(self, request):
         """
@@ -294,37 +313,26 @@ class TypesenseChangeList(ChangeList):
 
         # we let every list filter modify the objs to its liking.
         filters_dict = {}
-        text_filters = (AllValuesFieldListFilter, ChoicesFieldListFilter)
-        datetime_fields = (models.fields.DateTimeField, models.fields.DateField, models.fields.TimeField)
 
         for filter_spec in self.filter_specs:
-            if isinstance(filter_spec, BooleanFieldListFilter):
-                boolean_map = {'0': 'false', '1': 'true'}
-                lookup_value = filter_spec.lookup_val
-                if lookup_value:
-                    filters_dict[filter_spec.field_path] = boolean_map[lookup_value]
+            if hasattr(filter_spec, 'filter_by'):
+                # ALL CUSTOM FILTERS
+                filters_dict.update(filter_spec.filter_by)
 
-            elif isinstance(filter_spec, text_filters):
-                lookup_value = filter_spec.lookup_val
-                if lookup_value:
-                    filters_dict[filter_spec.field_path] = lookup_value
+            if hasattr(filter_spec, 'field'):
+                used_parameters = getattr(filter_spec, 'used_parameters')
+                search_filters = self.get_search_filters(filter_spec.field.attname, used_parameters)
+                filters_dict.update(search_filters)
 
-            elif isinstance(filter_spec, RelatedFieldListFilter):
-                lookup_value = filter_spec.lookup_val
-                typesense_field = f"{filter_spec.field_path}_id"
+        for k, v in remaining_lookup_params.items():
+            try:
+                field_name, _ = k.split('__', maxsplit=1)
+            except ValueError:
+                field_name = k
+                k = f'{k}__exact'
 
-                if lookup_value:
-                    filters_dict[typesense_field] = lookup_value
-
-            else:
-                if hasattr(filter_spec, 'filter_by'):
-                    # ALL CUSTOM FILTERS
-                    filters_dict.update(filter_spec.filter_by)
-
-                if hasattr(filter_spec, 'field'):
-                    if isinstance(filter_spec.field, datetime_fields):
-                        date_filters = self.get_date_filters(filter_spec)
-                        filters_dict.update(date_filters)
+            search_filters = self.get_search_filters(field_name, {k:v})
+            filters_dict.update(search_filters)
 
         filter_by = ' && '.join([f'{key}:{value}' for key, value in filters_dict.items()])
 
