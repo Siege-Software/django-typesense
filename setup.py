@@ -1,10 +1,11 @@
 from setuptools import find_namespace_packages, setup
+from django_typesense import __version__
 
 setup(
     name="django_typesense",
     author="Siege Software",
     author_email="info@siege.ai",
-    version="0.1.1",
+    version=__version__,
     install_requires=[
         "django",
         "typesense",

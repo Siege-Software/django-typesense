@@ -7,6 +7,7 @@ from django.contrib.admin.utils import model_ngettext
 from django.contrib.auth.admin import csrf_protect_m
 from django.core.exceptions import PermissionDenied
 from django.db import transaction, router
+from django.db.models import QuerySet
 from django.forms import forms
 from django.http import JsonResponse, HttpResponseRedirect
 from django.template.response import TemplateResponse, SimpleTemplateResponse
@@ -82,11 +83,17 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
     def get_paginator(
         self, request, results, per_page, orphans=0, allow_empty_first_page=True
     ):
+        # fallback incase we receive a queryset.
+        # Happens for autocomplete fields. Simple fix to avoid creating a custom AdminSite and AutoCompleteJSONView
+        search_term = request.GET.get("term", "*")
+        if isinstance(results, QuerySet):
+            results = self.get_typesense_search_results(search_term)
+
         return TypesenseSearchPaginator(
             results, per_page, orphans, allow_empty_first_page, self.model
         )
 
-    def get_typesense_search_results(self, search_term, page_num, filter_by, sort_by):
+    def get_typesense_search_results(self, search_term: str, page_num: int = 1, filter_by: str = '', sort_by: str = ''):
         """
         Get the results from typesense with the provided filtering, sorting, pagination and search parameters applied
 

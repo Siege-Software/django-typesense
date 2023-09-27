@@ -10,7 +10,7 @@ if django.VERSION < (4, 0):
 else:
     from django.utils.functional import classproperty
 
-from typesense.exceptions import ObjectNotFound
+from typesense.exceptions import ObjectNotFound, ObjectAlreadyExists
 from django_typesense.fields import TypesenseField, TypesenseCharField
 from django_typesense.typesense_client import client
 
@@ -159,7 +159,10 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         """
         Create a new typesense collection on the typesense server
         """
-        client.collections.create(self.schema)
+        try:
+            client.collections.create(self.schema)
+        except ObjectAlreadyExists:
+            pass
 
     def drop_typesense_collection(self):
         """
