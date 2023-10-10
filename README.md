@@ -101,16 +101,11 @@ It's okay to store fields that you don't intend to search but to display on the 
 
 Update the song model as follows:
 ```
-from django_typesense.mixins import TypesenseModelMixin
-
-class Song(TypesenseModelMixin):
+class Song(models.Model):
     ...
     collection_class = SongCollection
     ...
 ```
-
-The `TypesenseModelMixin` provides a Manager that overrides the `update` and `delete` methods of the Queryset.
-If your model has a custom manager, make sure the custom manager inherits `django_typesense.mixin.TypesenseManager`
 
 How the value of a field is retrieved from a model instance:
 1. The collection field name is called as a property of the model instance
@@ -120,10 +115,6 @@ Where the collections live is totally dependent on you but we recommend having a
 
 > [!NOTE]  
 > We recommend displaying data from ForeignKey or OneToOne fields as string attributes using the display decorator to avoid triggering database queries that will negatively affect performance.
-
-### Update Collection Schema [WIP]
-To add or remove fields to a collection's schema in place, update your collection then run:
-    `SongCollection.update_typesense_collection()`
 
 ### Admin Integration
 To make a model admin display and search from the model's Typesense collection, the admin class should inherit `TypesenseSearchAdminMixin`
