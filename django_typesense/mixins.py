@@ -19,6 +19,11 @@ class TypesenseQuerySet(models.QuerySet):
         return super().update(**kwargs)
 
 
+class TypesenseManager(models.Manager):
+    def get_queryset(self):
+        return TypesenseQuerySet(self.model, using=self._db)
+
+
 class TypesenseModelMixin(models.Model):
     collection_class = None
     objects = TypesenseQuerySet.as_manager()
