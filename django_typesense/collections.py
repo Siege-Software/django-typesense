@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 import django
 
 from typing import Optional, Iterable, Union, Dict
@@ -141,7 +143,7 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
     def _get_object_data(self, obj):
         return {field.name: field.value(obj) for field in self.fields.values()}
 
-    @cached_property
+    @property
     def schema(self) -> dict:
         """
         Returns:
@@ -157,12 +159,44 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
 
     def create_typesense_collection(self):
         """
-        Create a new typesense collection on the typesense server
+        Create a new typesense collection (schema) on the typesense server
         """
         try:
             client.collections.create(self.schema)
         except ObjectAlreadyExists:
             pass
+
+    def update_typesense_collection(self):
+        """
+        Update the schema of an existing collection
+        """
+        current_schema = self.retrieve_typesense_collection()
+        schema_changes = {}
+        field_changes = []
+
+        # Update fields
+        existing_fields = {field['name']: field for field in current_schema['fields']}
+        schema_fields = {field['name']: field for field in self.schema_fields}
+        # The collection retrieved from typesense does not include the id field so we remove the one we added
+        schema_fields.pop('id')
+
+        dropped_fields_names = set(existing_fields.keys()).difference(schema_fields.keys())
+        field_changes.extend([{'name': field_name, 'drop': True} for field_name in dropped_fields_names])
+
+        for field in schema_fields.values():
+            if field['name'] not in existing_fields.keys():
+                field_changes.append(field)
+            else:
+                if field != existing_fields[field['name']]:
+                    field_changes.append(field)
+
+        if field_changes:
+            schema_changes['fields'] = field_changes
+
+        if not schema_changes:
+            return
+
+        return client.collections[self.schema_name].update(schema_changes)
 
     def drop_typesense_collection(self):
         """
@@ -171,6 +205,9 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         client.collections[self.schema_name].delete()
 
     def retrieve_typesense_collection(self):
+        """
+        Retrieve the details of a collection
+        """
         return client.collections[self.schema_name].retrieve()
 
     def delete(self):

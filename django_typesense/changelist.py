@@ -2,9 +2,6 @@ from datetime import datetime
 
 from django import forms
 from django.contrib import messages
-from django.contrib.admin import (
-    BooleanFieldListFilter, AllValuesFieldListFilter, ChoicesFieldListFilter, RelatedFieldListFilter
-)
 from django.contrib.admin.exceptions import DisallowedModelAdminToField
 from django.contrib.admin.options import (
     IS_POPUP_VAR,
@@ -13,7 +10,6 @@ from django.contrib.admin.options import (
 )
 from django.contrib.admin.views.main import ChangeList
 from django.core.paginator import InvalidPage
-from django.db import models
 from django.db.models import OrderBy
 from django.utils.translation import gettext
 from django.utils.dateparse import parse_datetime
