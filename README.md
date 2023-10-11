@@ -116,17 +116,21 @@ How the value of a field is retrieved from a model instance:
 1. The collection field name is called as a property of the model instance
 2. If `value` is provided, it will be called as a property or method of the model instance
 
-Where the collections live is totally dependent on you but we recommend having a `collections.py` file in the django app where the model you are creating a collection for is.
+Where the collections live is totally dependent on you but we recommend having a `collections.py` file
+in the django app where the model you are creating a collection for is.
 
 > [!NOTE]  
-> We recommend displaying data from ForeignKey or OneToOne fields as string attributes using the display decorator to avoid triggering database queries that will negatively affect performance.
+> We recommend displaying data from ForeignKey or OneToOne fields as string attributes using the display decorator to
+> avoid triggering database queries that will negatively affect performance 
+> [Issue #16](https://github.com/Siege-Software/django-typesense/issues/16).
 
 ### Update Collection Schema [WIP]
 To add or remove fields to a collection's schema in place, update your collection then run:
     `SongCollection.update_typesense_collection()`
 
 ### Admin Integration
-To make a model admin display and search from the model's Typesense collection, the admin class should inherit `TypesenseSearchAdminMixin`
+To make a model admin display and search from the model's Typesense collection, the admin class should
+inherit `TypesenseSearchAdminMixin`
 
 ```
 from django_typesense.admin import TypesenseSearchAdminMixin
