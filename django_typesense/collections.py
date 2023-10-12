@@ -1,8 +1,8 @@
-from collections import defaultdict
+import pdb
 
 import django
 
-from typing import Optional, Iterable, Union, Dict
+from typing import Iterable, Union, Dict, List
 
 from django.db.models import QuerySet
 from django.utils.functional import cached_property
@@ -19,6 +19,30 @@ from django_typesense.typesense_client import client
 _COLLECTION_META_OPTIONS = {
     'schema_name', 'default_sorting_field', 'token_separators', 'symbols_to_index', 'query_by_fields'
 }
+_SYNONYM_PARAMETERS = {'synonyms', 'root', 'locale', 'symbols_to_index'}
+
+
+class Synonym:
+    name: str = ''
+    synonyms: list[str] = None
+    root: str = ''
+    locale: str = ''
+    symbols_to_index: list[str] = None
+
+    @classproperty
+    def data(cls):
+        if not cls.name:
+            raise ValueError('the name attribute must be set')
+
+        if not cls.synonyms:
+            raise ValueError('the synonyms attribute must be set')
+
+        if cls.symbols_to_index is None:
+            cls.symbols_to_index = []
+
+        return {
+            cls.name: {param: getattr(cls, param) for param in _SYNONYM_PARAMETERS if getattr(cls, param)}
+        }
 
 
 class TypesenseCollectionMeta(type):
@@ -31,10 +55,11 @@ class TypesenseCollectionMeta(type):
 class TypesenseCollection(metaclass=TypesenseCollectionMeta):
 
     query_by_fields: str = ''
-    schema_name: Optional[str] = ''
-    default_sorting_field: Optional[str] = ''
-    token_separators: Optional[list] = []
-    symbols_to_index: Optional[list] = []
+    schema_name: str = ''
+    default_sorting_field: str = ''
+    token_separators: list = []
+    symbols_to_index: list = []
+    synonyms: List[Synonym] = []
 
     def __init__(self, obj: Union[object, QuerySet, Iterable] = None, many: bool = False, data: list = None):
         assert self.query_by_fields, "`query_by_fields` must be specified in the collection definition"
@@ -42,6 +67,7 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
 
         self._meta = self._get_metadata()
         self.fields = self.get_fields()
+        self._synonyms = [synonym().data for synonym in self.synonyms]
 
         # TODO: Make self.data a cached_property
         if data:
@@ -61,7 +87,7 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
             A dictionary of the fields names to the field definition for this collection
         """
         fields = {}
-        # Avoid Recursion Erros
+        # Avoid Recursion Errors
         exclude_attributes = {'sortable_fields'}
 
         for attr in dir(cls):
@@ -170,6 +196,8 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         """
         Update the schema of an existing collection
         """
+        self.create_or_update_synonyms()
+
         current_schema = self.retrieve_typesense_collection()
         schema_changes = {}
         field_changes = []
@@ -232,3 +260,36 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         except ObjectNotFound:
             self.create_typesense_collection()
             return client.collections[self.schema_name].documents.import_(self.data, {"action": "upsert"})
+
+    def create_or_update_synonyms(self):
+        current_synonyms = {}
+        for synonym in self.get_synonyms().get('synonyms', []):
+            name = synonym.pop('id')
+            current_synonyms[name] = synonym
+
+        defined_synonyms = {}
+        for synonym_data in self._synonyms:
+            defined_synonyms.update(synonym_data)
+
+        missing_synonyms_names = set(current_synonyms.keys()).difference(defined_synonyms.keys())
+
+        for synonym_name in missing_synonyms_names:
+            self.delete_synonym(synonym_name)
+
+        for synonym_name, synonym_data in defined_synonyms.items():
+            if synonym_name not in current_synonyms:
+                client.collections[self.schema_name].synonyms.upsert(synonym_name, synonym_data)
+            elif synonym_data != current_synonyms[synonym_name]:
+                client.collections[self.schema_name].synonyms.upsert(synonym_name, synonym_data)
+
+    def get_synonyms(self) -> dict:
+        """List all synonyms associated with this collection"""
+        return client.collections[self.schema_name].synonyms.retrieve()
+
+    def get_synonym(self, synonym_name) -> dict:
+        """Retrieve a single synonym by name"""
+        return client.collections[self.schema_name].synonyms[synonym_name].retrieve()
+
+    def delete_synonym(self, synonym_name):
+        """Delete the synonym with the given name associated with this collection"""
+        return client.collections[self.schema_name].synonyms[synonym_name].delete()

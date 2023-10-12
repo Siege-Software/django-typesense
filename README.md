@@ -83,7 +83,7 @@ from django_typesense import fields
 
 class SongCollection(TypesenseCollection):
     # At least one of the indexed fields has to be provided as one of the `query_by_fields`. Must be a CharField
-    query_by_fields = 'title,artist_names'
+    query_by_fields = 'title,artist_names,genre_name'
     
     title = fields.TypesenseCharField()
     genre_name = fields.TypesenseCharField(value='genre.name')
@@ -124,9 +124,11 @@ in the django app where the model you are creating a collection for is.
 > avoid triggering database queries that will negatively affect performance 
 > [Issue #16](https://github.com/Siege-Software/django-typesense/issues/16).
 
-### Update Collection Schema [WIP]
+### Update Collection Schema
 To add or remove fields to a collection's schema in place, update your collection then run:
-    `SongCollection.update_typesense_collection()`
+    `SongCollection().update_typesense_collection()`
+
+This also updates the [synonyms](#synonyms)
 
 ### Admin Integration
 To make a model admin display and search from the model's Typesense collection, the admin class should
@@ -157,7 +159,7 @@ model_qs = Song.objects.all().order_by('id')  # querysets should be ordered
 bulk_update_typesense_records(model_qs, batch_size=1024)
 ```
 
-# Custom Admin Filters
+### Custom Admin Filters
 To make use of custom admin filters, define a `filter_by` property in the filter definition.
 Define boolean typesense field `has_views` that gets it's value from a model property. This is example is not necessarily practical but for demo purposes.
 
@@ -208,4 +210,27 @@ class HasViewsFilter(admin.SimpleListFilter):
 
         return {}
 ```
+
+### Synonyms
+The [synonyms](https://typesense.org/docs/0.25.1/api/synonyms.html) feature allows you to define search terms that 
+should be considered equivalent. Synonyms should be defined with classes that inherit from `Synonym`
+
+```
+from django_typesense.collections import Synonym
+
+# say you need users searching the genre hip-hop to get results if they use the search term rap
+
+class HipHopSynonym(Synonym):
+    name = 'hip-hop-synonyms'
+    synonyms = ['hip-hop', 'rap']
+ 
+# Update the collection to include the synonym
+class SongCollection(TypesenseCollection):
+    ...
+    synonyms = [HipHopSynonym]
+    ...
+    
+```
+To update the collection with any changes made to synonyms run `SongCollection().update_typesense_collection()`
+
 
