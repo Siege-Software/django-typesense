@@ -264,7 +264,7 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         if not self.data:
             return
 
-        delete_params = {"filter_by": f"id:{[obj['id'] for obj in self.data]}"}
+        delete_params = {"filter_by": f"id:{[int(obj['id']) for obj in self.data]}"}
 
         try:
             return client.collections[self.schema_name].documents.delete(delete_params)
