@@ -49,10 +49,17 @@ jobs:
           pip install pytest
           pip install coverage
           pip install pytz
+          pip install typesense
+
+      - name: Setup TypeSense
+        uses: jirevwe/typesense-github-action@v1.0.1
+        with:
+          typesense-version: 0.25.1
+          typesense-api-key: sample_key
 
       - name: Run tests
         run: |
-          coverage run -m pytest .
+          coverage run runtests.py
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3
