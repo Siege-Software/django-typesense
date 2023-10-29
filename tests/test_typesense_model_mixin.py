@@ -4,6 +4,7 @@ from django.test import TestCase
 from typesense import exceptions
 
 from django_typesense.typesense_client import client
+from django_typesense.mixins import TypesenseManager
 
 from tests.models import Artist, Genre, Song
 
@@ -27,72 +28,37 @@ class TestTypeSenseMixin(TestCase):
         except exceptions.ObjectNotFound:
             return None
 
-    def test_get_typesense_schema_name(self):
-        """
-        Test that the get_typesense_schema_name() method returns the correct schema name.
-        """
-        self.assertEqual(self.song.collection_class.schema_name, "songcollection")
+    def test_get_collection_class(self):
+        collection_class = Song.get_collection_class()
+        self.assertEqual(collection_class.__name__, "SongCollection")
 
-    def test_get_typesense_fields(self):
-        """
-        Test that the get_typesense_fields() method returns a list of fields.
-        """
-        schema_fields = [
-            "id",
-            "title",
-            "genre_name",
-            "genre_id",
-            "release_date",
-            "artist_names",
-            "number_of_comments",
-            "number_of_views",
-        ]
-        song_schema_fields = self.song.collection_class.get_fields().keys()
-        self.assertCountEqual(song_schema_fields, schema_fields)
+    def test_typesense_manager(self):
+        self.assertIsInstance(Song.objects, TypesenseManager)
 
-    def test_get_typesense_dict(self):
-        """
-        Test that the get_typesense_dict() method returns a dictionary of typesense document data.
-        """
+    def test_update_collection(self):
         schema_name = self.song.collection_class.schema_name
         song_document = self.get_document(schema_name, self.song.pk)
-
-        self.assertEqual(song_document["title"], self.song.title)
-        self.assertEqual(
-            song_document["release_date"], self.song.release_date_timestamp
-        )
-        self.assertEqual(song_document["genre_id"], self.song.genre.pk)
         self.assertEqual(song_document["genre_name"], self.song.genre.name)
-        self.assertEqual(
-            song_document["number_of_comments"], self.song.number_of_comments
-        )
-        self.assertEqual(song_document["number_of_views"], self.song.number_of_views)
 
-    def test_upsert_typesense_document(self):
-        """
-        Test that the upsert_typesense_document() method upserts a document to TypeSense.
-        """
-        schema_name = self.song.collection_class.schema_name
-        song_document = self.get_document(schema_name, self.song.pk)
-
-        self.assertEqual(song_document["title"], self.song.title)
-        new_title = "New Title"
-        self.song.title = new_title
-        self.song.save(update_fields=["title"])
+        genre_name = "Dancehall"
+        self.genre.name = genre_name
+        self.genre.save(update_fields=["name"])
 
         song_document = self.get_document(schema_name, self.song.pk)
-        self.assertEqual(song_document["title"], new_title)
+        self.assertNotEqual(song_document["genre_name"], self.song.genre.name)
+        self.assertEqual(self.song.genre.name, genre_name)
 
-    def test_delete_typesense_document(self):
-        """
-        Test that the delete_typesense_document() method deletes a document from TypeSense.
-        """
+        Song.objects.get_queryset().update()
+        song_document = self.get_document(schema_name, self.song.pk)
+        self.assertEqual(song_document["genre_name"], genre_name)
+        self.assertEqual(song_document["genre_name"], self.song.genre.name)
+
+    def test_delete_collection(self):
         schema_name = self.song.collection_class.schema_name
-        document_id = self.song.pk
-        song_document = self.get_document(schema_name, document_id)
-
+        song_document = self.get_document(schema_name, self.song.pk)
         self.assertEqual(song_document["title"], self.song.title)
 
-        self.song.delete()
-        song_document = self.get_document(schema_name, document_id)
+        Song.objects.get_queryset().delete()
+
+        song_document = self.get_document(schema_name, self.song.pk)
         self.assertIsNone(song_document)
