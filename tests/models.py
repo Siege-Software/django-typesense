@@ -1,8 +1,7 @@
 from django.db import models
 from django.utils import dateformat
 
-from django_typesense.mixins import TypesenseModelMixin
-
+from django_typesense.mixins import TypesenseManager, TypesenseModelMixin
 from tests.collections import SongCollection
 
 
@@ -20,6 +19,11 @@ class Artist(models.Model):
         return self.name
 
 
+class SongManager(TypesenseManager):
+    def do_something(self):
+        return None
+
+
 class Song(TypesenseModelMixin):
     title = models.CharField(max_length=100)
     genre = models.ForeignKey(Genre, on_delete=models.CASCADE)
@@ -30,6 +34,8 @@ class Song(TypesenseModelMixin):
     duration = models.DurationField()
     description = models.TextField()
     collection_class = SongCollection
+
+    objects = SongManager()
 
     def __str__(self):
         return self.title
