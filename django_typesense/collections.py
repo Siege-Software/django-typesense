@@ -1,6 +1,5 @@
-import pdb
-
 import django
+import logging
 
 from typing import Iterable, Union, Dict, List
 
@@ -15,6 +14,8 @@ else:
 from typesense.exceptions import ObjectNotFound, ObjectAlreadyExists
 from django_typesense.fields import TypesenseField, TypesenseCharField
 from django_typesense.typesense_client import client
+
+logger = logging.getLogger(__name__)
 
 _COLLECTION_META_OPTIONS = {
     'schema_name', 'default_sorting_field', 'token_separators', 'symbols_to_index', 'query_by_fields'
@@ -196,9 +197,14 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         """
         Update the schema of an existing collection
         """
+        try:
+            current_schema = self.retrieve_typesense_collection()
+        except ObjectNotFound:
+            self.create_typesense_collection()
+            current_schema = self.retrieve_typesense_collection()
+
         self.create_or_update_synonyms()
 
-        current_schema = self.retrieve_typesense_collection()
         schema_changes = {}
         field_changes = []
 
@@ -222,6 +228,7 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
             schema_changes['fields'] = field_changes
 
         if not schema_changes:
+            logger.debug(f"No schema changes in {self.schema_name}")
             return
 
         return client.collections[self.schema_name].update(schema_changes)
@@ -272,15 +279,24 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
             defined_synonyms.update(synonym_data)
 
         missing_synonyms_names = set(current_synonyms.keys()).difference(defined_synonyms.keys())
+        has_changes = False
 
         for synonym_name in missing_synonyms_names:
+            has_changes = True
             self.delete_synonym(synonym_name)
 
         for synonym_name, synonym_data in defined_synonyms.items():
             if synonym_name not in current_synonyms:
+                has_changes = True
                 client.collections[self.schema_name].synonyms.upsert(synonym_name, synonym_data)
             elif synonym_data != current_synonyms[synonym_name]:
+                has_changes = True
                 client.collections[self.schema_name].synonyms.upsert(synonym_name, synonym_data)
+
+        if has_changes:
+            logger.debug(f"Synonyms updated in {self.schema_name}")
+        else:
+            logger.debug(f"No synonyms to update in {self.schema_name}")
 
     def get_synonyms(self) -> dict:
         """List all synonyms associated with this collection"""
