@@ -1,69 +1,84 @@
-import django
-import logging
+from __future__ import annotations
 
-from typing import Iterable, Union, Dict, List
+import logging
+import pdb
+from typing import Dict, Iterable, List, Union
 
 from django.db.models import QuerySet
 from django.utils.functional import cached_property
 
-if django.VERSION < (4, 0):
-    from django.utils.decorators import classproperty
-else:
+try:
     from django.utils.functional import classproperty
+except ImportError:
+    from django.utils.decorators import classproperty
 
-from typesense.exceptions import ObjectNotFound, ObjectAlreadyExists
-from django_typesense.fields import TypesenseField, TypesenseCharField
+from typesense.exceptions import ObjectAlreadyExists, ObjectNotFound
+
+from django_typesense.fields import TypesenseCharField, TypesenseField
 from django_typesense.typesense_client import client
 
 logger = logging.getLogger(__name__)
 
 _COLLECTION_META_OPTIONS = {
-    'schema_name', 'default_sorting_field', 'token_separators', 'symbols_to_index', 'query_by_fields'
+    "schema_name",
+    "default_sorting_field",
+    "token_separators",
+    "symbols_to_index",
+    "query_by_fields",
 }
-_SYNONYM_PARAMETERS = {'synonyms', 'root', 'locale', 'symbols_to_index'}
+_SYNONYM_PARAMETERS = {"synonyms", "root", "locale", "symbols_to_index"}
 
 
 class Synonym:
-    name: str = ''
+    name: str = ""
     synonyms: list[str] = None
-    root: str = ''
-    locale: str = ''
+    root: str = ""
+    locale: str = ""
     symbols_to_index: list[str] = None
 
     @classproperty
     def data(cls):
         if not cls.name:
-            raise ValueError('the name attribute must be set')
+            raise ValueError("the name attribute must be set")
 
         if not cls.synonyms:
-            raise ValueError('the synonyms attribute must be set')
+            raise ValueError("the synonyms attribute must be set")
 
         if cls.symbols_to_index is None:
             cls.symbols_to_index = []
 
         return {
-            cls.name: {param: getattr(cls, param) for param in _SYNONYM_PARAMETERS if getattr(cls, param)}
+            cls.name: {
+                param: getattr(cls, param)
+                for param in _SYNONYM_PARAMETERS
+                if getattr(cls, param)
+            }
         }
 
 
 class TypesenseCollectionMeta(type):
-
     def __new__(cls, name, bases, namespace):
-        namespace['schema_name'] = namespace.get('schema_name') or name.lower()
+        namespace["schema_name"] = namespace.get("schema_name") or name.lower()
         return super().__new__(cls, name, bases, namespace)
 
 
 class TypesenseCollection(metaclass=TypesenseCollectionMeta):
-
-    query_by_fields: str = ''
-    schema_name: str = ''
-    default_sorting_field: str = ''
+    query_by_fields: str = ""
+    schema_name: str = ""
+    default_sorting_field: str = ""
     token_separators: list = []
     symbols_to_index: list = []
     synonyms: List[Synonym] = []
 
-    def __init__(self, obj: Union[object, QuerySet, Iterable] = None, many: bool = False, data: list = None):
-        assert self.query_by_fields, "`query_by_fields` must be specified in the collection definition"
+    def __init__(
+        self,
+        obj: Union[object, QuerySet, Iterable] = None,
+        many: bool = False,
+        data: list = None,
+    ):
+        assert (
+            self.query_by_fields
+        ), "`query_by_fields` must be specified in the collection definition"
         assert not all([obj, data]), "`obj` and `data` cannot be provided together"
 
         self._meta = self._get_metadata()
@@ -89,7 +104,7 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         """
         fields = {}
         # Avoid Recursion Errors
-        exclude_attributes = {'sortable_fields'}
+        exclude_attributes = {"sortable_fields"}
 
         for attr in dir(cls):
             if attr in exclude_attributes:
@@ -103,17 +118,20 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
             fields[attr] = attr_value
 
         # Auto adds id if absent
-        if not fields.get('id'):
-            _id = TypesenseCharField(sort=True, value='pk')
-            _id._name = 'id'
-            fields['id'] = _id
+        if not fields.get("id"):
+            _id = TypesenseCharField(sort=True, value="pk")
+            _id._name = "id"
+            fields["id"] = _id
 
         return fields
 
     @classmethod
     def _get_metadata(cls) -> dict:
         defined_meta_options = _COLLECTION_META_OPTIONS.intersection(set(dir(cls)))
-        return {meta_option: getattr(cls, meta_option) for meta_option in defined_meta_options}
+        return {
+            meta_option: getattr(cls, meta_option)
+            for meta_option in defined_meta_options
+        }
 
     @cached_property
     def validated_data(self) -> list:
@@ -179,9 +197,9 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         return {
             "name": self.schema_name,
             "fields": self.schema_fields,
-            "default_sorting_field": self._meta['default_sorting_field'],
-            "symbols_to_index": self._meta['symbols_to_index'],
-            "token_separators": self._meta['token_separators']
+            "default_sorting_field": self._meta["default_sorting_field"],
+            "symbols_to_index": self._meta["symbols_to_index"],
+            "token_separators": self._meta["token_separators"],
         }
 
     def create_typesense_collection(self):
@@ -209,23 +227,27 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         field_changes = []
 
         # Update fields
-        existing_fields = {field['name']: field for field in current_schema['fields']}
-        schema_fields = {field['name']: field for field in self.schema_fields}
+        existing_fields = {field["name"]: field for field in current_schema["fields"]}
+        schema_fields = {field["name"]: field for field in self.schema_fields}
         # The collection retrieved from typesense does not include the id field so we remove the one we added
-        schema_fields.pop('id')
+        schema_fields.pop("id")
 
-        dropped_fields_names = set(existing_fields.keys()).difference(schema_fields.keys())
-        field_changes.extend([{'name': field_name, 'drop': True} for field_name in dropped_fields_names])
+        dropped_fields_names = set(existing_fields.keys()).difference(
+            schema_fields.keys()
+        )
+        field_changes.extend(
+            [{"name": field_name, "drop": True} for field_name in dropped_fields_names]
+        )
 
         for field in schema_fields.values():
-            if field['name'] not in existing_fields.keys():
+            if field["name"] not in existing_fields.keys():
                 field_changes.append(field)
             else:
-                if field != existing_fields[field['name']]:
+                if field != existing_fields[field["name"]]:
                     field_changes.append(field)
 
         if field_changes:
-            schema_changes['fields'] = field_changes
+            schema_changes["fields"] = field_changes
 
         if not schema_changes:
             logger.debug(f"No schema changes in {self.schema_name}")
@@ -249,9 +271,7 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         if not self.data:
             return
 
-        delete_params = {
-            "filter_by": f"id:{[obj['id'] for obj in self.data]}"
-        }
+        delete_params = {"filter_by": f"id:{[int(obj['id']) for obj in self.data]}"}
 
         try:
             return client.collections[self.schema_name].documents.delete(delete_params)
@@ -263,22 +283,28 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
             return
 
         try:
-            return client.collections[self.schema_name].documents.import_(self.data, {"action": "upsert"})
+            return client.collections[self.schema_name].documents.import_(
+                self.data, {"action": "upsert"}
+            )
         except ObjectNotFound:
             self.create_typesense_collection()
-            return client.collections[self.schema_name].documents.import_(self.data, {"action": "upsert"})
+            return client.collections[self.schema_name].documents.import_(
+                self.data, {"action": "upsert"}
+            )
 
     def create_or_update_synonyms(self):
         current_synonyms = {}
-        for synonym in self.get_synonyms().get('synonyms', []):
-            name = synonym.pop('id')
+        for synonym in self.get_synonyms().get("synonyms", []):
+            name = synonym.pop("id")
             current_synonyms[name] = synonym
 
         defined_synonyms = {}
         for synonym_data in self._synonyms:
             defined_synonyms.update(synonym_data)
 
-        missing_synonyms_names = set(current_synonyms.keys()).difference(defined_synonyms.keys())
+        missing_synonyms_names = set(current_synonyms.keys()).difference(
+            defined_synonyms.keys()
+        )
         has_changes = False
 
         for synonym_name in missing_synonyms_names:
@@ -288,10 +314,14 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         for synonym_name, synonym_data in defined_synonyms.items():
             if synonym_name not in current_synonyms:
                 has_changes = True
-                client.collections[self.schema_name].synonyms.upsert(synonym_name, synonym_data)
+                client.collections[self.schema_name].synonyms.upsert(
+                    synonym_name, synonym_data
+                )
             elif synonym_data != current_synonyms[synonym_name]:
                 has_changes = True
-                client.collections[self.schema_name].synonyms.upsert(synonym_name, synonym_data)
+                client.collections[self.schema_name].synonyms.upsert(
+                    synonym_name, synonym_data
+                )
 
         if has_changes:
             logger.debug(f"Synonyms updated in {self.schema_name}")
