@@ -14,9 +14,10 @@ class TypesenseQuerySet(models.QuerySet):
         assert issubclass(self.model, TypesenseModelMixin), (
             f"Model `{self.model}` must inherit `TypesenseMixin` to use the TypesenseQueryset Manager"
         )
+        update_result = super().update(**kwargs)
         collection = self.model.get_collection(self, many=True)
         collection.update()
-        return super().update(**kwargs)
+        return update_result
 
 
 class TypesenseManager(models.Manager):
