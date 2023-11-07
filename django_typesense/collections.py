@@ -244,6 +244,7 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
                 field_changes.append(field)
             else:
                 if field != existing_fields[field["name"]]:
+                    field_changes.append({"name": field['name'], "drop": True})
                     field_changes.append(field)
 
         if field_changes:
