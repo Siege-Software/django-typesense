@@ -24,7 +24,7 @@ Faster Django Admin powered by [Typesense](https://typesense.org/)
 
 or install directly from github to test the most recent version
 
-`pip install git+https://github.com/SiegeSoftware/django-typesense.git`
+`pip install git+https://github.com/Siege-Software/django-typesense.git`
 
 Add `django_typesense` to the list of installed apps.
 
