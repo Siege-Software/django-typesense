@@ -28,7 +28,12 @@ class TypesenseSearchPaginator(Paginator):
 
             for field_name in collection.fields.keys():
                 if field_name not in model_field_names:
-                    properties[field_name] = data.pop(field_name)
+                    try:
+                        field_val = data.pop(field_name)
+                    except KeyError:
+                        pass
+                    else:
+                        properties[field_name] = field_val
 
             result_instance = self.model(**data)
             for key, value in properties.items():
