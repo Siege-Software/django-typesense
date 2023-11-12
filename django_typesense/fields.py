@@ -1,8 +1,13 @@
 import json
 from decimal import Decimal
-from datetime import datetime, date
+from datetime import datetime, date, time
 from typing import Optional
 from operator import attrgetter
+
+
+TYPESENSE_SCHEMA_ATTRS = [
+    'name', '_field_type', 'sort', 'index', 'optional', 'facet', 'infix', 'locale'
+]
 
 
 class TypesenseField:
@@ -42,19 +47,19 @@ class TypesenseField:
 
     @property
     def attrs(self):
-        return {
-            'name': self.name,
-            'type': self._field_type,
-            'sort': self.sort,
-            'index': self.index,
-            'optional': self.optional,
-            'facet': self.facet,
-            'infix': self.infix,
-            'locale': self.locale
-        }
+        _attrs = {k: getattr(self, k) for k in TYPESENSE_SCHEMA_ATTRS}
+        _attrs['type'] = _attrs.pop('_field_type')
+        return _attrs
 
     def value(self, obj):
-        __value = attrgetter(self._value)(obj)
+        try:
+            __value = attrgetter(self._value)(obj)
+        except AttributeError as er:
+            if self.optional:
+                __value = None
+            else:
+                raise er
+
         if callable(__value):
             return __value()
 
@@ -72,12 +77,26 @@ class TypesenseCharField(TypesenseField):
         return str(__value) if __value else __value
 
 
-class TypesenseSmallIntegerField(TypesenseField):
+class TypesenseIntegerMixin(TypesenseField):
+    def value(self, obj):
+        _value = super().value(obj)
+
+        if _value is None:
+            return None
+        try:
+            return int(_value)
+        except (TypeError, ValueError) as e:
+            raise e.__class__(
+                f"Field '{self.name}' expected a number but got {_value}.",
+            ) from e
+
+
+class TypesenseSmallIntegerField(TypesenseIntegerMixin):
     _field_type = "int32"
     _sort = True
 
 
-class TypesenseBigIntegerField(TypesenseField):
+class TypesenseBigIntegerField(TypesenseIntegerMixin):
     _field_type = "int64"
     _sort = True
 
@@ -107,17 +126,37 @@ class TypesenseBooleanField(TypesenseField):
     _sort = True
 
 
-class TypesenseDateField(TypesenseBigIntegerField):
+class TypesenseDateTimeFieldBase(TypesenseBigIntegerField):
+    def value(self, obj):
+        _value = super().value(obj)
+
+        if isinstance(_value, int):
+            return _value
+
+        # isinstance can take a union type but for backwards compatibility we call it multiple times
+        elif isinstance(_value, datetime):
+            _value = int(_value.timestamp())
+
+        elif isinstance(_value, date):
+            _value = int(datetime.combine(_value, datetime.min.time()).timestamp())
+
+        elif isinstance(_value, time):
+            _value = int(datetime.combine(datetime.today(), _value).timestamp())
+
+        return _value
+
+
+class TypesenseDateField(TypesenseDateTimeFieldBase):
     def to_python(self, value):
         return date.fromtimestamp(value)
 
 
-class TypesenseDateTimeField(TypesenseBigIntegerField):
+class TypesenseDateTimeField(TypesenseDateTimeFieldBase):
     def to_python(self, value):
         return datetime.fromtimestamp(value)
 
 
-class TypesenseTimeField(TypesenseBigIntegerField):
+class TypesenseTimeField(TypesenseDateTimeFieldBase):
     def to_python(self, value):
         return datetime.fromtimestamp(value).time()
 

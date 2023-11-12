@@ -1,6 +1,7 @@
 import concurrent.futures
 import logging
 import os
+from datetime import datetime
 
 from django.db.models import QuerySet
 from django.core.paginator import Paginator
@@ -117,3 +118,17 @@ def typesense_search(collection_name, **kwargs):
         search_parameters.update({key: value})
 
     return client.collections[collection_name].documents.search(search_parameters)
+
+
+def get_unix_timestamp(datetime_object):
+    """
+    Get the unix timestamp from a datetime object with the time part set to midnight
+
+    Args:
+        datetime_object: a python date/datetime object
+
+    Returns:
+        An integer representing the timestamp
+    """
+
+    return int(datetime.combine(datetime_object, datetime.min.time()).timestamp())
