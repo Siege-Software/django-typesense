@@ -75,12 +75,14 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         obj: Union[object, QuerySet, Iterable] = None,
         many: bool = False,
         data: list = None,
+        update_fields: list = None,
     ):
         assert (
             self.query_by_fields
         ), "`query_by_fields` must be specified in the collection definition"
         assert not all([obj, data]), "`obj` and `data` cannot be provided together"
 
+        self.update_fields = update_fields
         self._meta = self._get_metadata()
         self.fields = self.get_fields()
         self._synonyms = [synonym().data for synonym in self.synonyms]
@@ -186,7 +188,15 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         return [field.attrs for field in self.fields.values()]
 
     def _get_object_data(self, obj):
-        return {field.name: field.value(obj) for field in self.fields.values()}
+        if self.update_fields:
+            # we need the id for updates and a user can leave it out
+            update_fields = set(self.fields.keys()).intersection(set(self.update_fields))
+            update_fields.add('id')
+            fields = [self.get_field(field_name) for field_name in update_fields]
+        else:
+            fields = self.fields.values()
+
+        return {field.name: field.value(obj) for field in fields}
 
     @property
     def schema(self) -> dict:
@@ -279,18 +289,34 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         except ObjectNotFound:
             pass
 
-    def update(self):
+    def update(self, action_mode: str = "emplace"):
         if not self.data:
             return
 
+        if len(self.data) == 1:
+            return self._update_single_document(self.data[0])
+        else:
+            return self._update_multiple_documents(action_mode)
+
+    def _update_single_document(self, document):
+        document_id = document.pop('id')
+
+        try:
+            return client.collections[self.schema_name].documents[document_id].update(document)
+        except ObjectNotFound:
+            self.create_typesense_collection()
+            document['id'] = document_id
+            return client.collections[self.schema_name].documents.upsert(document)
+
+    def _update_multiple_documents(self, action_mode):
         try:
             return client.collections[self.schema_name].documents.import_(
-                self.data, {"action": "upsert"}
+                self.data, {"action": action_mode}
             )
         except ObjectNotFound:
             self.create_typesense_collection()
             return client.collections[self.schema_name].documents.import_(
-                self.data, {"action": "upsert"}
+                self.data, {"action": action_mode}
             )
 
     def create_or_update_synonyms(self):

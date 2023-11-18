@@ -15,6 +15,7 @@ from django.utils.translation import gettext
 from django.utils.dateparse import parse_datetime
 
 from django_typesense.fields import TYPESENSE_DATETIME_FIELDS
+from django_typesense.utils import get_unix_timestamp
 
 # Changelist settings
 ALL_VAR = "all"
@@ -80,8 +81,8 @@ class TypesenseChangeList(ChangeList):
         self.date_hierarchy = date_hierarchy
         self.search_fields = search_fields
         self.list_select_related = list_select_related
-        self.list_per_page = list_per_page
-        self.list_max_show_all = list_max_show_all
+        self.list_per_page = min(list_max_show_all, 250) # Typesense Max hits per page
+        self.list_max_show_all = min(list_max_show_all, 250) # Typesense Max hits per page
         self.model_admin = model_admin
         self.preserved_filters = model_admin.get_preserved_filters(request)
         self.sortable_by = sortable_by
@@ -261,7 +262,7 @@ class TypesenseChangeList(ChangeList):
 
             if isinstance(field, tuple(TYPESENSE_DATETIME_FIELDS)):
                 datetime_object = parse_datetime(value)
-                value = int(datetime.combine(datetime_object, datetime.min.time()).timestamp())
+                value = get_unix_timestamp(datetime_object)
 
             if str(value).isdigit():
                 if lookup in ['gte', 'gt']:
@@ -280,7 +281,14 @@ class TypesenseChangeList(ChangeList):
             if field.field_type == 'string':
                 search_filters_dict[field_name] = f':{lookup_to_operator[lookup]}{value}'
             elif field.field_type == 'bool':
-                boolean_map = {'0': 'false', '1': 'true'}
+                value = value.lower()
+                boolean_map = {
+                    '0': 'false', '1': 'true',
+                    'false': 'false', 'true': 'true',
+                    'no': 'false', 'yes': 'true',
+                    'n': 'false', 'y': 'true',
+                    False: 'false', True: 'true',
+                }
                 search_filters_dict[field_name] = boolean_map[value]
             else:
                 search_filters_dict[field_name] = f'{lookup_to_operator[lookup]}{value}'
@@ -312,13 +320,19 @@ class TypesenseChangeList(ChangeList):
 
         for filter_spec in self.filter_specs:
             if hasattr(filter_spec, 'filter_by'):
-                # ALL CUSTOM FILTERS
+                # all custom filters with filter_by defined
                 filters_dict.update(filter_spec.filter_by)
+                continue
 
             if hasattr(filter_spec, 'field'):
                 used_parameters = getattr(filter_spec, 'used_parameters')
                 search_filters = self.get_search_filters(filter_spec.field.attname, used_parameters)
                 filters_dict.update(search_filters)
+            else:
+                # custom filters where filter_by is not defined
+                used_parameters = getattr(filter_spec, 'used_parameters')
+                remaining_lookup_params.update(used_parameters)
+
 
         for k, v in remaining_lookup_params.items():
             try:
@@ -342,7 +356,7 @@ class TypesenseChangeList(ChangeList):
             query,
             self.page_num,
             filter_by=filter_by,
-            sort_by=sort_by
+            sort_by=sort_by,
         )
 
         # Set query string for clearing all filters.
@@ -352,3 +366,18 @@ class TypesenseChangeList(ChangeList):
         )
 
         return results
+
+    def get_queryset(self, request):
+        # this is needed for admin actions that call cl.get_queryset
+        # To reduce the trips use max per_page
+        self.list_per_page = 250
+        ids = []
+        while True:
+            results = self.get_typesense_results(request)
+            if not results['hits']:
+                break
+
+            ids.extend([result['document']['id'] for result in results['hits']])
+            self.page_num += 1
+
+        return self.model.objects.filter(id__in=ids)

@@ -16,4 +16,13 @@ setup(
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     license_files=("LICENSE",),
+    classifiers=[
+        "Development Status :: 3 - Alpha",
+        "License :: OSI Approved :: MIT License",
+        "Framework :: Django",
+        "Intended Audience :: Developers",
+        "Natural Language :: English",
+        "Programming Language :: Python :: 3",
+        "Operating System :: OS Independent",
+    ]
 )

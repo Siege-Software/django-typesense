@@ -4,6 +4,7 @@ from datetime import datetime, date, time
 from typing import Optional
 from operator import attrgetter
 
+from django_typesense.utils import get_unix_timestamp
 
 TYPESENSE_SCHEMA_ATTRS = [
     'name', '_field_type', 'sort', 'index', 'optional', 'facet', 'infix', 'locale'
@@ -126,24 +127,27 @@ class TypesenseBooleanField(TypesenseField):
     _sort = True
 
 
-class TypesenseDateTimeFieldBase(TypesenseBigIntegerField):
+class TypesenseDateTimeFieldBase(TypesenseField):
+    _field_type = "int64"
+    _sort = True
+
     def value(self, obj):
         _value = super().value(obj)
+
+        if _value is None:
+            return None
 
         if isinstance(_value, int):
             return _value
 
-        # isinstance can take a union type but for backwards compatibility we call it multiple times
-        elif isinstance(_value, datetime):
-            _value = int(_value.timestamp())
+        _value = get_unix_timestamp(_value)
 
-        elif isinstance(_value, date):
-            _value = int(datetime.combine(_value, datetime.min.time()).timestamp())
-
-        elif isinstance(_value, time):
-            _value = int(datetime.combine(datetime.today(), _value).timestamp())
-
-        return _value
+        try:
+            return int(_value)
+        except (TypeError, ValueError) as e:
+            raise e.__class__(
+                f"Field '{self.name}' expected a number but got {_value}.",
+            ) from e
 
 
 class TypesenseDateField(TypesenseDateTimeFieldBase):

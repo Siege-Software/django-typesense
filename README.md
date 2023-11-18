@@ -7,16 +7,11 @@
 [![PyPI version](https://badge.fury.io/py/django-typesense.svg)](https://pypi.python.org/pypi/django-typesense/)
 ![Python versions](https://img.shields.io/badge/python-%3E%3D3.8-brightgreen)
 ![Django Versions](https://img.shields.io/badge/django-%3E%3D3.2-brightgreen)
-[![PyPI License](https://img.shields.io/pypi/l/django-typesense.svg)](https://pypi.python.org/pypi/django-typesense/)
+[![PyPI License](https://img.shields.io/pypi/l/django-typesense.svg)](https://pypi.org/project/django-typesense/)
 
-
-> [!WARNING]  
-> **This package is in the initial development phase. Do not use in production environment.**
 
 ## What is it?
 Faster Django Admin powered by [Typesense](https://typesense.org/)
-
-
 
 ## Quick Start Guide
 ### Installation
@@ -126,13 +121,36 @@ in the django app where the model you are creating a collection for is.
 
 ### Update Collection Schema
 To add or remove fields to a collection's schema in place, update your collection then run:
-    `SongCollection().update_typesense_collection()`
+    `python manage.py updatecollections`. Consider adding this to your CI/CD pipeline.
 
 This also updates the [synonyms](#synonyms)
 
+
+### How updates are made to Typesense
+1. Signals -
+`django-typesense` listens to signal events (`post_save`, `pre_delete`, `m2m_changed`) to update typesense records. 
+If [`update_fields`](https://docs.djangoproject.com/en/4.2/ref/models/instances/#specifying-which-fields-to-save)
+were provided in the save method, only these fields will be updated in typesense.
+
+2. Update query -
+`django-typesense` overrides Django's `QuerySet.update` to make updates to typesense on the specified fields
+
+3. Manual -
+You can also update typesense records manually e.g after doing a `bulk_create`
+```
+objs = Song.objects.bulk_create(
+    [
+      Song(title="Watch What I Do"),
+      Song(title="Midnight City"),
+   ]
+)
+collection = SongCollection(objs, many=True)
+collection.update()
+```
+
 ### Admin Integration
 To make a model admin display and search from the model's Typesense collection, the admin class should
-inherit `TypesenseSearchAdminMixin`
+inherit `TypesenseSearchAdminMixin`. This also adds Live Search to your admin changelist view.
 
 ```
 from django_typesense.admin import TypesenseSearchAdminMixin
@@ -211,6 +229,9 @@ class HasViewsFilter(admin.SimpleListFilter):
         return {}
 ```
 
+Note that simple lookups like the one above are done by default (hence no need to define `filter_by`) if 
+the `parameter_name` is a field in the collection
+
 ### Synonyms
 The [synonyms](https://typesense.org/docs/0.25.1/api/synonyms.html) feature allows you to define search terms that 
 should be considered equivalent. Synonyms should be defined with classes that inherit from `Synonym`
@@ -231,6 +252,6 @@ class SongCollection(TypesenseCollection):
     ...
     
 ```
-To update the collection with any changes made to synonyms run `SongCollection().update_typesense_collection()`
+To update the collection with any changes made to synonyms run `python manage.py updatecollections`
 
 
