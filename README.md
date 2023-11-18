@@ -119,6 +119,22 @@ in the django app where the model you are creating a collection for is.
 > avoid triggering database queries that will negatively affect performance 
 > [Issue #16](https://github.com/Siege-Software/django-typesense/issues/16).
 
+Instead of this in the admin:
+```
+@admin.display('Genre')
+def genre_name(self, obj):
+    return obj.genre.name
+```
+
+Do this:
+
+```
+@admin.display('Genre')
+def genre_name(self, obj):
+    # genre_name is field in the Collection. You can also store the object url as html
+    return obj.genre_name
+```
+
 ### Update Collection Schema
 To add or remove fields to a collection's schema in place, update your collection then run:
     `python manage.py updatecollections`. Consider adding this to your CI/CD pipeline.
