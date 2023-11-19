@@ -1,18 +1,16 @@
 import concurrent.futures
 import logging
 import os
-from datetime import datetime
+from datetime import datetime, date, time
 
 from django.db.models import QuerySet
 from django.core.paginator import Paginator
 
-from django_typesense.collections import TypesenseCollection
-from django_typesense.typesense_client import client
 
 logger = logging.getLogger(__name__)
 
 
-def update_batch(documents_queryset: QuerySet, collection_class: TypesenseCollection, batch_no: int) -> None:
+def update_batch(documents_queryset: QuerySet, collection_class, batch_no: int) -> None:
     """
     Helper function that updates a batch of documents using the Typesense API.
     """
@@ -89,6 +87,7 @@ def bulk_delete_typesense_records(document_ids: list, collection_name: str) -> N
         None
     """
 
+    from django_typesense.typesense_client import client
     try:
         client.collections[collection_name].documents.delete(
             {"filter_by": f"id:{document_ids}"}
@@ -109,6 +108,7 @@ def typesense_search(collection_name, **kwargs):
         A list of the typesense results
     """
 
+    from django_typesense.typesense_client import client
     if not collection_name:
         return
 
@@ -125,10 +125,25 @@ def get_unix_timestamp(datetime_object):
     Get the unix timestamp from a datetime object with the time part set to midnight
 
     Args:
-        datetime_object: a python date/datetime object
+        datetime_object: a python date/datetime/time object
 
     Returns:
         An integer representing the timestamp
     """
 
-    return int(datetime.combine(datetime_object, datetime.min.time()).timestamp())
+    # isinstance can take a union type but for backwards compatibility we call it multiple times
+    if isinstance(datetime_object, datetime):
+        timestamp = int(datetime_object.timestamp())
+
+    elif isinstance(datetime_object, date):
+        timestamp = int(datetime.combine(datetime_object, datetime.min.time()).timestamp())
+
+    elif isinstance(datetime_object, time):
+        timestamp = int(datetime.combine(datetime.today(), datetime_object).timestamp())
+
+    else:
+        raise Exception(
+            f"Expected a date/datetime/time objects but got {datetime_object} of type {type(datetime_object)}"
+        )
+
+    return timestamp

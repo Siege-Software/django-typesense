@@ -17,7 +17,7 @@ class TypesenseQuerySet(models.QuerySet):
         obj_ids = list(self.values_list('id', flat=True))
         update_result = super().update(**kwargs)
         queryset = self.model.objects.filter(id__in=obj_ids)
-        collection = self.model.get_collection(queryset, many=True)
+        collection = self.model.get_collection(queryset, many=True, update_fields=kwargs.keys())
         collection.update()
         return update_result
 
