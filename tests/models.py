@@ -48,5 +48,14 @@ class Song(TypesenseModelMixin):
             else self.release_date
         )
 
+    @property
+    def library_ids(self):
+        return list(self.libraries.values_list("id", flat=True))
+
     def artist_names(self):
         return list(self.artists.all().values_list("name", flat=True))
+
+
+class Library(models.Model):
+    name = models.CharField(max_length=255)
+    songs = models.ManyToManyField(Song, related_name="libraries")
