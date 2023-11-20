@@ -21,14 +21,13 @@ def pre_delete_typesense_models(sender, instance, **kwargs):
 
 
 @receiver(m2m_changed)
-def m2m_changed_typesense_models(instance, model, action, reverse, **kwargs):
+def m2m_changed_typesense_models(instance, model, action, **kwargs):
     if action in ["post_add", "post_remove", "post_clear"]:
-        if reverse and issubclass(model, TypesenseModelMixin):
-            pk_set = list(kwargs.get("pk_set"))
-            obj = model.objects.filter(pk__in=pk_set)
-            model.get_collection(obj=obj, many=True).update()
-            return
-
         if isinstance(instance, TypesenseModelMixin):
             instance_class = instance.__class__
             instance_class.get_collection(instance).update()
+
+        if issubclass(model, TypesenseModelMixin):
+            pk_set = list(kwargs.get("pk_set"))
+            obj = model.objects.filter(pk__in=pk_set)
+            model.get_collection(obj=obj, many=True).update()
