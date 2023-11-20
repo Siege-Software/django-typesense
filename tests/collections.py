@@ -16,3 +16,6 @@ class SongCollection(TypesenseCollection):
     )
     number_of_comments = fields.TypesenseSmallIntegerField(index=False, optional=True)
     number_of_views = fields.TypesenseSmallIntegerField(index=False, optional=True)
+    library_ids = fields.TypesenseArrayField(
+        base_field=fields.TypesenseSmallIntegerField(), value="library_ids"
+    )
