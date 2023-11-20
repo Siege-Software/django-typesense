@@ -2,7 +2,7 @@ from datetime import date, timedelta
 
 from django.test import TestCase
 
-from tests.models import Artist, Genre, Song
+from tests.models import Artist, Genre, Library, Song
 from tests.utils import get_document
 
 
@@ -63,3 +63,19 @@ class TestTypeSenseSignals(TestCase):
         song_document = get_document(schema_name, self.song.pk)
         self.assertIsNotNone(song_document)
         self.assertCountEqual(song_document["artist_names"], self.song.artist_names())
+
+        song_document = get_document(schema_name, self.song.pk)
+        self.assertIsNotNone(song_document)
+        self.assertCountEqual(song_document["library_ids"], self.song.library_ids)
+
+        library = Library.objects.create(name="new album")
+        library.songs.add(self.song)
+
+        song_document = get_document(schema_name, self.song.pk)
+        self.assertIsNotNone(song_document)
+        self.assertCountEqual(song_document["library_ids"], self.song.library_ids)
+
+        self.song.libraries.remove(library)
+        song_document = get_document(schema_name, self.song.pk)
+        self.assertIsNotNone(song_document)
+        self.assertCountEqual(song_document["library_ids"], self.song.library_ids)
