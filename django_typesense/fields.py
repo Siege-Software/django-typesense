@@ -75,7 +75,9 @@ class TypesenseCharField(TypesenseField):
 
     def value(self, obj):
         __value = super().value(obj)
-        return str(__value) if __value else __value
+        if isinstance(__value, str) or __value is None:
+            return __value
+        return str(__value)
 
 
 class TypesenseIntegerMixin(TypesenseField):
