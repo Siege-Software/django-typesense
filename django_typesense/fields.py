@@ -75,8 +75,10 @@ class TypesenseCharField(TypesenseField):
 
     def value(self, obj):
         __value = super().value(obj)
-        if isinstance(__value, str) or __value is None:
+        if isinstance(__value, str):
             return __value
+        if __value is None:
+            return ''
         return str(__value)
 
 
