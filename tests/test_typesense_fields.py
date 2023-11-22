@@ -47,7 +47,7 @@ class TestTypesenseCharField(TestCase):
         self.assertEqual(title.value(obj=self.song), self.song.title)
 
         optional_field = fields.TypesenseCharField(value="name", optional=True)
-        self.assertIsNone(optional_field.value(obj=self.song))
+        self.assertEqual(optional_field.value(obj=self.song), "")
 
         with self.assertRaises(AttributeError):
             invalid_field = fields.TypesenseCharField(value="invalid_field")
