@@ -8,9 +8,7 @@ class SongCollection(TypesenseCollection):
     title = fields.TypesenseCharField()
     genre_name = fields.TypesenseCharField(value="genre.name")
     genre_id = fields.TypesenseSmallIntegerField()
-    release_date = fields.TypesenseDateField(
-        value="release_date_timestamp", optional=True
-    )
+    release_date = fields.TypesenseDateField(optional=True)
     artist_names = fields.TypesenseArrayField(
         base_field=fields.TypesenseCharField(), value="artist_names"
     )
