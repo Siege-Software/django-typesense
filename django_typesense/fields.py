@@ -7,7 +7,14 @@ from operator import attrgetter
 from django_typesense.utils import get_unix_timestamp
 
 TYPESENSE_SCHEMA_ATTRS = [
-    'name', '_field_type', 'sort', 'index', 'optional', 'facet', 'infix', 'locale'
+    "name",
+    "_field_type",
+    "sort",
+    "index",
+    "optional",
+    "facet",
+    "infix",
+    "locale",
 ]
 
 
@@ -24,7 +31,7 @@ class TypesenseField:
         optional: bool = False,
         facet: bool = False,
         infix: bool = False,
-        locale: str = ''
+        locale: str = "",
     ):
         self._value = value
         self._name = None
@@ -36,7 +43,7 @@ class TypesenseField:
         self.locale = locale
 
     def __str__(self):
-        return f"{self}: {self.name}"
+        return f"{self.name}"
 
     @property
     def field_type(self):
@@ -49,7 +56,7 @@ class TypesenseField:
     @property
     def attrs(self):
         _attrs = {k: getattr(self, k) for k in TYPESENSE_SCHEMA_ATTRS}
-        _attrs['type'] = _attrs.pop('_field_type')
+        _attrs["type"] = _attrs.pop("_field_type")
         return _attrs
 
     def value(self, obj):
@@ -78,7 +85,7 @@ class TypesenseCharField(TypesenseField):
         if isinstance(__value, str):
             return __value
         if __value is None:
-            return ''
+            return ""
         return str(__value)
 
 
@@ -115,6 +122,7 @@ class TypesenseDecimalField(TypesenseField):
     """
     String type is preferred over float
     """
+
     _field_type = "string"
     _sort = True
 
@@ -146,12 +154,7 @@ class TypesenseDateTimeFieldBase(TypesenseField):
 
         _value = get_unix_timestamp(_value)
 
-        try:
-            return int(_value)
-        except (TypeError, ValueError) as e:
-            raise e.__class__(
-                f"Field '{self.name}' expected a number but got {_value}.",
-            ) from e
+        return _value
 
 
 class TypesenseDateField(TypesenseDateTimeFieldBase):
@@ -173,6 +176,7 @@ class TypesenseJSONField(TypesenseField):
     """
     `string` is preferred over `object`
     """
+
     _field_type = "string"
 
     def value(self, obj):
@@ -193,4 +197,8 @@ class TypesenseArrayField(TypesenseField):
         return list(map(self.base_field.to_python, value))
 
 
-TYPESENSE_DATETIME_FIELDS = [TypesenseDateTimeField, TypesenseDateField, TypesenseTimeField]
+TYPESENSE_DATETIME_FIELDS = [
+    TypesenseDateTimeField,
+    TypesenseDateField,
+    TypesenseTimeField,
+]
