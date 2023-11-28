@@ -154,7 +154,7 @@ def get_unix_timestamp(datetime_object):
         timestamp = int(datetime.combine(datetime.today(), datetime_object).timestamp())
 
     else:
-        raise Exception(
+        raise TypeError(
             f"Expected a date/datetime/time objects but got {datetime_object} of type {type(datetime_object)}"
         )
 
