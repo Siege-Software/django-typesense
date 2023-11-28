@@ -1,4 +1,4 @@
 black
-pre-commit
-pytest
 coverage
+factory-boy
+pre-commit
