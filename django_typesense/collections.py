@@ -208,9 +208,11 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
     def _get_object_data(self, obj):
         if self.update_fields:
             # we need the id for updates and a user can leave it out
-            update_fields = set(self.fields.keys()).intersection(set(self.update_fields))
+            update_fields = set(self.fields.keys()).intersection(
+                set(self.update_fields)
+            )
             if update_fields:
-                update_fields.add('id')
+                update_fields.add("id")
                 fields = [self.get_field(field_name) for field_name in update_fields]
             else:
                 fields = []
@@ -275,7 +277,7 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
                 field_changes.append(field)
             else:
                 if field != existing_fields[field["name"]]:
-                    field_changes.append({"name": field['name'], "drop": True})
+                    field_changes.append({"name": field["name"], "drop": True})
                     field_changes.append(field)
 
         if field_changes:
@@ -320,14 +322,20 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
             return self._update_multiple_documents(action_mode)
 
     def _update_single_document(self, document):
-        document_id = document.pop('id')
+        document_id = document.pop("id")
 
         try:
-            return client.collections[self.schema_name].documents[document_id].update(document)
+            return (
+                client.collections[self.schema_name]
+                .documents[document_id]
+                .update(document)
+            )
         except ObjectNotFound:
             self.update_fields = []
             # we don't want the cached data
-            return client.collections[self.schema_name].documents.upsert(self.get_data()[0] )
+            return client.collections[self.schema_name].documents.upsert(
+                self.get_data()[0]
+            )
 
     def _update_multiple_documents(self, action_mode):
         try:
