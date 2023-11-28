@@ -51,8 +51,9 @@ def bulk_update_typesense_records(
     batch_size: int = 1024,
     num_threads: int = os.cpu_count(),
 ) -> None:
-    """This method updates Typesense records for both objs .update() calls from Typesense mixin subclasses.
-    This function should be called on every model update statement for data consistency
+    """This method updates Typesense records for both objects .update() calls from
+    Typesense mixin subclasses.
+    This function should be called on every model update statement for data consistency.
 
     Parameters
     ----------
@@ -110,7 +111,8 @@ def bulk_update_typesense_records(
 
 
 def bulk_delete_typesense_records(document_ids: list, collection_name: str) -> None:
-    """This method deletes Typesense records for objs .delete() calls from Typesense mixin subclasses
+    """This method deletes Typesense records for objects .delete() calls
+    from Typesense mixin subclasses.
 
     Parameters
     ----------
