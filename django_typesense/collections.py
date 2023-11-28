@@ -87,16 +87,34 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         self.fields = self.get_fields()
         self._synonyms = [synonym().data for synonym in self.synonyms]
 
-        # TODO: Make self.data a cached_property
-        if data:
-            self.data = data
-        elif obj:
-            if many:
-                self.data = list(map(self._get_object_data, obj))
-            else:
-                self.data = [self._get_object_data(obj)]
+        if data and obj:
+            raise Exception("'data' and 'obj' are mutually exclusive")
+
+        self._data = data
+        self.many = many
+        self.obj = obj
+
+    @cached_property
+    def data(self):
+        return self.get_data()
+
+    def get_data(self):
+        if self._data:
+            return self._data
+
+        if not self.obj:
+            return []
+
+        data = []
+        if self.many:
+            for _obj in self.obj:
+                if obj_data := self._get_object_data(_obj):
+                    data.append(obj_data)
         else:
-            self.data = []
+            if obj_data := self._get_object_data(self.obj):
+                data.append(obj_data)
+
+        return data
 
     @classmethod
     def get_fields(cls) -> Dict[str, TypesenseField]:
@@ -191,8 +209,11 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         if self.update_fields:
             # we need the id for updates and a user can leave it out
             update_fields = set(self.fields.keys()).intersection(set(self.update_fields))
-            update_fields.add('id')
-            fields = [self.get_field(field_name) for field_name in update_fields]
+            if update_fields:
+                update_fields.add('id')
+                fields = [self.get_field(field_name) for field_name in update_fields]
+            else:
+                fields = []
         else:
             fields = self.fields.values()
 
@@ -304,9 +325,9 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         try:
             return client.collections[self.schema_name].documents[document_id].update(document)
         except ObjectNotFound:
-            self.create_typesense_collection()
-            document['id'] = document_id
-            return client.collections[self.schema_name].documents.upsert(document)
+            self.update_fields = []
+            # we don't want the cached data
+            return client.collections[self.schema_name].documents.upsert(self.get_data()[0] )
 
     def _update_multiple_documents(self, action_mode):
         try:
@@ -314,9 +335,9 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
                 self.data, {"action": action_mode}
             )
         except ObjectNotFound:
-            self.create_typesense_collection()
+            # we don't want the cached data
             return client.collections[self.schema_name].documents.import_(
-                self.data, {"action": action_mode}
+                self.get_data(), {"action": action_mode}
             )
 
     def create_or_update_synonyms(self):
