@@ -9,7 +9,7 @@ def post_save_typesense_models(sender, instance, **kwargs):
     if not issubclass(sender, TypesenseModelMixin):
         return
 
-    sender.get_collection(instance).update()
+    sender.get_collection(instance, update_fields=kwargs.get('update_fields', [])).update()
 
 
 @receiver(pre_delete)
