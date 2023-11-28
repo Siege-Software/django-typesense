@@ -6,6 +6,7 @@ from datetime import date, datetime, time
 from django.core.exceptions import FieldError
 from django.core.paginator import Paginator
 from django.db.models import QuerySet
+from typesense.exceptions import TypesenseClientError
 
 from django_typesense.exceptions import BatchUpdateError, UnorderedQuerySetError
 
@@ -99,8 +100,10 @@ def bulk_delete_typesense_records(document_ids: list, collection_name: str) -> N
         client.collections[collection_name].documents.delete(
             {"filter_by": f"id:{document_ids}"}
         )
-    except Exception as e:
-        logger.error(f"Could not delete the documents IDs {document_ids}\nError: {e}")
+    except TypesenseClientError as error:
+        logger.error(
+            f"Could not delete the documents IDs {document_ids}\nError: {error}"
+        )
 
 
 def typesense_search(collection_name, **kwargs):
