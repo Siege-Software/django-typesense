@@ -6,6 +6,7 @@ from django.db.models import QuerySet
 from django.forms import forms
 from django.http import JsonResponse
 
+from django_typesense.mixins import TypesenseModelMixin
 from django_typesense.utils import typesense_search
 from django_typesense.paginator import TypesenseSearchPaginator
 
@@ -47,7 +48,9 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         """
 
         sortable_fields = super().get_sortable_by(request)
-        return set(sortable_fields).intersection(self.model.collection_class.sortable_fields)
+        return set(sortable_fields).intersection(
+            self.model.collection_class.sortable_fields
+        )
 
     def get_results(self, request):
         """
@@ -79,13 +82,24 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         # Happens for autocomplete fields. Simple fix to avoid creating a custom AdminSite and AutoCompleteJSONView
         search_term = request.GET.get("term", "*")
         if isinstance(results, QuerySet):
+            if not issubclass(results.model, TypesenseModelMixin):
+                return super().get_paginator(
+                    request, results, per_page, orphans, allow_empty_first_page
+                )
+
             results = self.get_typesense_search_results(search_term)
 
         return TypesenseSearchPaginator(
             results, per_page, orphans, allow_empty_first_page, self.model
         )
 
-    def get_typesense_search_results(self, search_term: str, page_num: int = 1, filter_by: str = '', sort_by: str = ''):
+    def get_typesense_search_results(
+        self,
+        search_term: str,
+        page_num: int = 1,
+        filter_by: str = "",
+        sort_by: str = "",
+    ):
         """
         Get the results from typesense with the provided filtering, sorting, pagination and search parameters applied
 
