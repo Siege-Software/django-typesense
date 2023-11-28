@@ -1,13 +1,13 @@
 import concurrent.futures
 import logging
 import os
-from datetime import datetime, date, time
+from datetime import date, datetime, time
 
-from django.db.models import QuerySet
+from django.core.exceptions import FieldError
 from django.core.paginator import Paginator
+from django.db.models import QuerySet
 
-from django_typesense.exceptions import BatchUpdateError
-
+from django_typesense.exceptions import BatchUpdateError, UnorderedQuerySetError
 
 logger = logging.getLogger(__name__)
 
@@ -50,18 +50,18 @@ def bulk_update_typesense_records(
 
     if not isinstance(records_queryset, TypesenseQuerySet):
         logger.error(
-            f"The objs for {records_queryset.model.__name__} does not use TypesenseQuerySet "
+            f"The objects for {records_queryset.model.__name__} does not use TypesenseQuerySet "
             f"as it's manager. Please update the model manager for the class to use Typesense."
         )
         return
 
     if not records_queryset.ordered:
         try:
-            records_queryset = records_queryset.order_by("id")
-        except Exception:
-            raise Exception(
+            records_queryset = records_queryset.order_by("pk")
+        except (FieldError, TypeError):
+            raise UnorderedQuerySetError(
                 "Pagination may yield inconsistent results with an unordered object_list. "
-                "Please provide an ordered objs"
+                "Please provide an ordered objects."
             )
 
     collection_class = records_queryset.model.collection_class
