@@ -6,6 +6,8 @@ from datetime import datetime, date, time
 from django.db.models import QuerySet
 from django.core.paginator import Paginator
 
+from django_typesense.exceptions import BatchUpdateError
+
 
 logger = logging.getLogger(__name__)
 
@@ -19,7 +21,7 @@ def update_batch(documents_queryset: QuerySet, collection_class, batch_no: int) 
     failure_responses = [response for response in responses if not response["success"]]
 
     if failure_responses:
-        raise Exception(
+        raise BatchUpdateError(
             f"An Error occurred during the bulk update: {failure_responses}"
         )
 
@@ -27,7 +29,9 @@ def update_batch(documents_queryset: QuerySet, collection_class, batch_no: int) 
 
 
 def bulk_update_typesense_records(
-        records_queryset: QuerySet, batch_size: int = 1024, num_threads: int = os.cpu_count()
+    records_queryset: QuerySet,
+    batch_size: int = 1024,
+    num_threads: int = os.cpu_count(),
 ) -> None:
     """
     This method updates Typesense records for both objs .update() calls from Typesense mixin subclasses.
@@ -68,7 +72,9 @@ def bulk_update_typesense_records(
         for page_no in paginator.page_range:
             documents_queryset = paginator.page(page_no).object_list
             logger.debug(f"Updating batch {page_no} of {paginator.num_pages}")
-            future = executor.submit(update_batch, documents_queryset, collection_class, page_no)
+            future = executor.submit(
+                update_batch, documents_queryset, collection_class, page_no
+            )
             futures.append(future)
 
         for future in concurrent.futures.as_completed(futures):
@@ -88,6 +94,7 @@ def bulk_delete_typesense_records(document_ids: list, collection_name: str) -> N
     """
 
     from django_typesense.typesense_client import client
+
     try:
         client.collections[collection_name].documents.delete(
             {"filter_by": f"id:{document_ids}"}
@@ -109,6 +116,7 @@ def typesense_search(collection_name, **kwargs):
     """
 
     from django_typesense.typesense_client import client
+
     if not collection_name:
         return
 
@@ -136,7 +144,9 @@ def get_unix_timestamp(datetime_object):
         timestamp = int(datetime_object.timestamp())
 
     elif isinstance(datetime_object, date):
-        timestamp = int(datetime.combine(datetime_object, datetime.min.time()).timestamp())
+        timestamp = int(
+            datetime.combine(datetime_object, datetime.min.time()).timestamp()
+        )
 
     elif isinstance(datetime_object, time):
         timestamp = int(datetime.combine(datetime.today(), datetime_object).timestamp())
