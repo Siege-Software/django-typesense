@@ -14,8 +14,25 @@ logger = logging.getLogger(__name__)
 
 
 def update_batch(documents_queryset: QuerySet, collection_class, batch_no: int) -> None:
-    """
-    Helper function that updates a batch of documents using the Typesense API.
+    """Updates a batch of documents using the Typesense API.
+
+    Parameters
+    ----------
+    documents_queryset : QuerySet
+        The Django objects QuerySet to update. It must be a `TypesenseModelMixin` subclass.
+    collection_class : TypesenseCollection
+        The Django Typesense collection to update.
+    batch_no : int
+        The batch identifier number.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    BatchUpdateError
+        Raised when an error occurs during updating typesense collection.
     """
     collection = collection_class(documents_queryset, many=True)
     responses = collection.update()
@@ -34,17 +51,27 @@ def bulk_update_typesense_records(
     batch_size: int = 1024,
     num_threads: int = os.cpu_count(),
 ) -> None:
-    """
-    This method updates Typesense records for both objs .update() calls from Typesense mixin subclasses.
+    """This method updates Typesense records for both objs .update() calls from Typesense mixin subclasses.
     This function should be called on every model update statement for data consistency
 
-    Parameters:
-        records_queryset (QuerySet): the QuerySet should be from a Typesense mixin subclass
-        batch_size: how many objects are indexed in a single run
-        num_threads: the number of thread that will be used. defaults to `os.cpu_count()`
+    Parameters
+    ----------
+    records_queryset : QuerySet
+        The Django objects QuerySet to update. It must be a `TypesenseModelMixin` subclass.
+    batch_size : int
+        The number of objects to be indexed in a single run. Defaults to 1024.
+    num_threads : int
+        The number of threads that will be used. Defaults to `os.cpu_count()`
 
-    Returns:
-        None
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    UnorderedQuerySetError
+        Raised when unordered queryset is ordered by `primary_key` and
+        throws a `FieldError` or `TypeError`.
     """
 
     from django_typesense.mixins import TypesenseQuerySet
@@ -83,15 +110,18 @@ def bulk_update_typesense_records(
 
 
 def bulk_delete_typesense_records(document_ids: list, collection_name: str) -> None:
-    """
-    This method deletes Typesense records for objs .delete() calls from Typesense mixin subclasses
+    """This method deletes Typesense records for objs .delete() calls from Typesense mixin subclasses
 
-    Parameters:
-        document_ids (list): the list of document IDs to be deleted
-        collection_name (str): The collection name for the documents, for delete the collection name is required
+    Parameters
+    ----------
+    document_ids : list
+        The list of document IDs to be deleted.
+    collection_name : str
+        The collection name to delete the documents from.
 
-    Returns:
-        None
+    Returns
+    -------
+    None
     """
 
     from django_typesense.typesense_client import client
@@ -106,16 +136,23 @@ def bulk_delete_typesense_records(document_ids: list, collection_name: str) -> N
         )
 
 
-def typesense_search(collection_name, **kwargs):
-    """
-    Perform a search on the specified collection using the parameters provided.
+def typesense_search(collection_name: str, **kwargs):
+    """Perform a search on the specified collection using the parameters provided.
 
-    Args:
-        collection_name: the schema name of the collection to perform the search on
-        **kwargs: typesense search parameters
+    Parameters
+    ----------
+    collection_name : str
+        The collection name to perform the search on.
+    **kwargs
+        The Typesense search parameters. `q` and `query_by` are required fields.
 
-    Returns:
-        A list of the typesense results
+    Returns
+    -------
+    results : dict
+        Returns seach results dictionary.
+    None
+        Returns None if required fields are not provided or a typesense exception
+        is raised.
     """
 
     from django_typesense.typesense_client import client
@@ -130,15 +167,22 @@ def typesense_search(collection_name, **kwargs):
         return None
 
 
-def get_unix_timestamp(datetime_object):
-    """
-    Get the unix timestamp from a datetime object with the time part set to midnight
+def get_unix_timestamp(datetime_object) -> int:
+    """Get the unix timestamp from a datetime object with the time part set to midnight
 
-    Args:
-        datetime_object: a python date/datetime/time object
+    Parameters
+    ----------
+    datetime_object: date, datetime, time
 
-    Returns:
-        An integer representing the timestamp
+    Returns
+    -------
+    timestamp : int
+        Returns the datetime object timestamp.
+
+    Raises
+    ------
+    TypeError
+        Raised when a non datetime parameter is passed.
     """
 
     # isinstance can take a union type but for backwards compatibility we call it multiple times
