@@ -120,15 +120,11 @@ def typesense_search(collection_name, **kwargs):
 
     from django_typesense.typesense_client import client
 
-    if not collection_name:
+    required_fields = ["q", "query_by"]
+    if not collection_name or not all(field in kwargs for field in required_fields):
         return
 
-    search_parameters = {}
-
-    for key, value in kwargs.items():
-        search_parameters.update({key: value})
-
-    return client.collections[collection_name].documents.search(search_parameters)
+    return client.collections[collection_name].documents.search(kwargs)
 
 
 def get_unix_timestamp(datetime_object):
