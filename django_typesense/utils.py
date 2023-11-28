@@ -124,7 +124,10 @@ def typesense_search(collection_name, **kwargs):
     if not collection_name or not all(field in kwargs for field in required_fields):
         return
 
-    return client.collections[collection_name].documents.search(kwargs)
+    try:
+        return client.collections[collection_name].documents.search(kwargs)
+    except TypesenseClientError:
+        return None
 
 
 def get_unix_timestamp(datetime_object):
