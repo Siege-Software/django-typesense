@@ -47,7 +47,9 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         """
 
         sortable_fields = super().get_sortable_by(request)
-        return set(sortable_fields).intersection(self.model.collection_class.sortable_fields)
+        return set(sortable_fields).intersection(
+            self.model.collection_class.sortable_fields
+        )
 
     def get_results(self, request):
         """
@@ -61,7 +63,9 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         """
 
         return typesense_search(
-            collection_name=self.model.collection_class.schema_name, q="*"
+            collection_name=self.model.collection_class.schema_name,
+            q="*",
+            query_by=self.model.collection_class.query_by_fields,
         )
 
     def get_changelist(self, request, **kwargs):
@@ -85,7 +89,13 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
             results, per_page, orphans, allow_empty_first_page, self.model
         )
 
-    def get_typesense_search_results(self, search_term: str, page_num: int = 1, filter_by: str = '', sort_by: str = ''):
+    def get_typesense_search_results(
+        self,
+        search_term: str,
+        page_num: int = 1,
+        filter_by: str = "",
+        sort_by: str = "",
+    ):
         """
         Get the results from typesense with the provided filtering, sorting, pagination and search parameters applied
 
