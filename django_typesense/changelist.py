@@ -62,7 +62,7 @@ class TypesenseChangeList(ChangeList):
         list_editable,
         model_admin,
         sortable_by,
-        search_help_text
+        search_help_text,
     ):
         self.model = model
         self.opts = model._meta
@@ -81,8 +81,10 @@ class TypesenseChangeList(ChangeList):
         self.date_hierarchy = date_hierarchy
         self.search_fields = search_fields
         self.list_select_related = list_select_related
-        self.list_per_page = min(list_max_show_all, 250) # Typesense Max hits per page
-        self.list_max_show_all = min(list_max_show_all, 250) # Typesense Max hits per page
+        self.list_per_page = min(list_max_show_all, 250)  # Typesense Max hits per page
+        self.list_max_show_all = min(
+            list_max_show_all, 250
+        )  # Typesense Max hits per page
         self.model_admin = model_admin
         self.preserved_filters = model_admin.get_preserved_filters(request)
         self.sortable_by = sortable_by
@@ -139,7 +141,7 @@ class TypesenseChangeList(ChangeList):
 
         # Get the total number of objects, with no admin filters applied.
         if self.model_admin.show_full_result_count:
-            full_result_count = self.root_results['found']
+            full_result_count = self.root_results["found"]
         else:
             full_result_count = None
         can_show_all = result_count <= self.list_max_show_all
@@ -217,15 +219,15 @@ class TypesenseChangeList(ChangeList):
         fields = self.model.collection_class.get_fields()
 
         for param in ordering:
-            if param.startswith('-'):
-                _, field_name = param.split('-')
-                order = 'desc'
+            if param.startswith("-"):
+                _, field_name = param.split("-")
+                order = "desc"
             else:
                 field_name = param
-                order = 'asc'
+                order = "asc"
 
             # Temporarily left out: Could not find a field named `id` in the schema for sorting
-            if field_name in ['pk', 'id']:
+            if field_name in ["pk", "id"]:
                 # sort_dict['id'] = order
                 continue
 
@@ -237,7 +239,7 @@ class TypesenseChangeList(ChangeList):
 
             sort_dict[field_name] = order
 
-        sort_by = ','.join([f'{key}:{value}' for key, value in sort_dict.items()])
+        sort_by = ",".join([f"{key}:{value}" for key, value in sort_dict.items()])
         return sort_by
 
     def get_search_filters(self, field_name: str, used_parameters: dict):
@@ -245,7 +247,14 @@ class TypesenseChangeList(ChangeList):
         if not used_parameters:
             return search_filters_dict
 
-        lookup_to_operator = {'gte':'>=', 'gt': '>', 'lte': '<=', 'lt': '<', 'iexact': '=', 'exact': '='}
+        lookup_to_operator = {
+            "gte": ">=",
+            "gt": ">",
+            "lte": "<=",
+            "lt": "<",
+            "iexact": "=",
+            "exact": "=",
+        }
         max_val, min_val, lookup, value = None, None, None, None
 
         field = self.model.collection_class.get_field(field_name)
@@ -254,9 +263,9 @@ class TypesenseChangeList(ChangeList):
             if not value:
                 continue
 
-            _, lookup = key.rsplit('__', maxsplit=1)
-            lookup = lookup or 'exact'
-            if lookup == 'isnull':
+            _, lookup = key.rsplit("__", maxsplit=1)
+            lookup = lookup or "exact"
+            if lookup == "isnull":
                 # Null search is not supported in typesense
                 continue
 
@@ -265,33 +274,42 @@ class TypesenseChangeList(ChangeList):
                 value = get_unix_timestamp(datetime_object)
 
             if str(value).isdigit():
-                if lookup in ['gte', 'gt']:
+                if lookup in ["gte", "gt"]:
                     min_val = value
-                if lookup in ['lte', 'lt']:
+                if lookup in ["lte", "lt"]:
                     max_val = value
 
         if max_val and min_val:
-            search_filters_dict[field_name] = f'[{min_val}..{max_val}]'
+            search_filters_dict[field_name] = f"[{min_val}..{max_val}]"
             value = None
         elif max_val or min_val:
-            search_filters_dict[field_name] = f'{lookup_to_operator[lookup]}{min_val or max_val}'
+            search_filters_dict[
+                field_name
+            ] = f"{lookup_to_operator[lookup]}{min_val or max_val}"
             value = None
 
         if value:
-            if field.field_type == 'string':
-                search_filters_dict[field_name] = f':{lookup_to_operator[lookup]}{value}'
-            elif field.field_type == 'bool':
+            if field.field_type == "string":
+                search_filters_dict[
+                    field_name
+                ] = f":{lookup_to_operator[lookup]}{value}"
+            elif field.field_type == "bool":
                 value = value.lower()
                 boolean_map = {
-                    '0': 'false', '1': 'true',
-                    'false': 'false', 'true': 'true',
-                    'no': 'false', 'yes': 'true',
-                    'n': 'false', 'y': 'true',
-                    False: 'false', True: 'true',
+                    "0": "false",
+                    "1": "true",
+                    "false": "false",
+                    "true": "true",
+                    "no": "false",
+                    "yes": "true",
+                    "n": "false",
+                    "y": "true",
+                    False: "false",
+                    True: "true",
                 }
                 search_filters_dict[field_name] = boolean_map[value]
             else:
-                search_filters_dict[field_name] = f'{lookup_to_operator[lookup]}{value}'
+                search_filters_dict[field_name] = f"{lookup_to_operator[lookup]}{value}"
 
         return search_filters_dict
 
@@ -319,32 +337,35 @@ class TypesenseChangeList(ChangeList):
         filters_dict = {}
 
         for filter_spec in self.filter_specs:
-            if hasattr(filter_spec, 'filter_by'):
+            if hasattr(filter_spec, "filter_by"):
                 # all custom filters with filter_by defined
                 filters_dict.update(filter_spec.filter_by)
                 continue
 
-            if hasattr(filter_spec, 'field'):
-                used_parameters = getattr(filter_spec, 'used_parameters')
-                search_filters = self.get_search_filters(filter_spec.field.attname, used_parameters)
+            if hasattr(filter_spec, "field"):
+                used_parameters = getattr(filter_spec, "used_parameters")
+                search_filters = self.get_search_filters(
+                    filter_spec.field.attname, used_parameters
+                )
                 filters_dict.update(search_filters)
             else:
                 # custom filters where filter_by is not defined
-                used_parameters = getattr(filter_spec, 'used_parameters')
+                used_parameters = getattr(filter_spec, "used_parameters")
                 remaining_lookup_params.update(used_parameters)
-
 
         for k, v in remaining_lookup_params.items():
             try:
-                field_name, _ = k.split('__', maxsplit=1)
+                field_name, _ = k.split("__", maxsplit=1)
             except ValueError:
                 field_name = k
-                k = f'{k}__exact'
+                k = f"{k}__exact"
 
-            search_filters = self.get_search_filters(field_name, {k:v})
+            search_filters = self.get_search_filters(field_name, {k: v})
             filters_dict.update(search_filters)
 
-        filter_by = ' && '.join([f'{key}:{value}' for key, value in filters_dict.items()])
+        filter_by = " && ".join(
+            [f"{key}:{value}" for key, value in filters_dict.items()]
+        )
 
         # Set ordering.
         ordering = self.get_typesense_ordering(request)
@@ -353,6 +374,7 @@ class TypesenseChangeList(ChangeList):
         # Apply django_typesense search results
         query = self.query or "*"
         results = self.model_admin.get_typesense_search_results(
+            request,
             query,
             self.page_num,
             filter_by=filter_by,
@@ -374,10 +396,10 @@ class TypesenseChangeList(ChangeList):
         ids = []
         while True:
             results = self.get_typesense_results(request)
-            if not results['hits']:
+            if not results["hits"]:
                 break
 
-            ids.extend([result['document']['id'] for result in results['hits']])
+            ids.extend([result["document"]["id"] for result in results["hits"]])
             self.page_num += 1
 
         return self.model.objects.filter(id__in=ids)

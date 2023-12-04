@@ -87,7 +87,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
                     request, results, per_page, orphans, allow_empty_first_page
                 )
 
-            results = self.get_typesense_search_results(search_term)
+            results = self.get_typesense_search_results(request, search_term)
 
         return TypesenseSearchPaginator(
             results, per_page, orphans, allow_empty_first_page, self.model
@@ -95,6 +95,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
 
     def get_typesense_search_results(
         self,
+        request,
         search_term: str,
         page_num: int = 1,
         filter_by: str = "",
@@ -105,6 +106,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
 
         Args:
             search_term: The search term provided in the search form
+            request: the current request object
             page_num: The requested page number
             filter_by: The filtering parameters
             sort_by: The sort parameters
