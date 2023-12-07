@@ -64,7 +64,9 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         """
 
         return typesense_search(
-            collection_name=self.model.collection_class.schema_name, q="*"
+            collection_name=self.model.collection_class.schema_name,
+            q="*",
+            query_by=self.model.collection_class.query_by_fields,
         )
 
     def get_changelist(self, request, **kwargs):
