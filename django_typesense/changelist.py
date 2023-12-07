@@ -81,7 +81,7 @@ class TypesenseChangeList(ChangeList):
         self.date_hierarchy = date_hierarchy
         self.search_fields = search_fields
         self.list_select_related = list_select_related
-        self.list_per_page = min(list_max_show_all, 250)  # Typesense Max hits per page
+        self.list_per_page = min(list_per_page, 250)  # Typesense Max hits per page
         self.list_max_show_all = min(
             list_max_show_all, 250
         )  # Typesense Max hits per page
