@@ -142,15 +142,21 @@ def bulk_delete_typesense_records(document_ids: list, collection_name: str) -> N
 
 
 def typesense_search(collection_name, **kwargs):
-    """
-    Perform a search on the specified collection using the parameters provided.
+    """Perform a search on the specified collection using the parameters provided.
 
-    Args:
-        collection_name: the schema name of the collection to perform the search on
-        **kwargs: typesense search parameters
+    Parameters
+    ----------
+    collection_name : str
+        The collection name to perform the search on.
+    **kwargs
+        The Typesense search parameters.
 
-    Returns:
-        A list of the typesense results
+    Returns
+    -------
+    results : dict
+        Returns seach results dictionary.
+    None
+        Returns None when invalid collection name is provided.
     """
 
     from django_typesense.typesense_client import client
