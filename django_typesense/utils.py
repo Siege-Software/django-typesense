@@ -36,6 +36,9 @@ def update_batch(documents_queryset: QuerySet, collection_class, batch_no: int) 
     """
     collection = collection_class(documents_queryset, many=True)
     responses = collection.update()
+    if responses is None:
+        return
+
     failure_responses = [response for response in responses if not response["success"]]
 
     if failure_responses:
