@@ -141,35 +141,29 @@ def bulk_delete_typesense_records(document_ids: list, collection_name: str) -> N
         )
 
 
-def typesense_search(collection_name: str, **kwargs):
-    """Perform a search on the specified collection using the parameters provided.
+def typesense_search(collection_name, **kwargs):
+    """
+    Perform a search on the specified collection using the parameters provided.
 
-    Parameters
-    ----------
-    collection_name : str
-        The collection name to perform the search on.
-    **kwargs
-        The Typesense search parameters. `q` and `query_by` are required fields.
+    Args:
+        collection_name: the schema name of the collection to perform the search on
+        **kwargs: typesense search parameters
 
-    Returns
-    -------
-    results : dict
-        Returns seach results dictionary.
-    None
-        Returns None if required fields are not provided or a typesense exception
-        is raised.
+    Returns:
+        A list of the typesense results
     """
 
     from django_typesense.typesense_client import client
 
-    required_fields = ["q", "query_by"]
-    if not collection_name or not all(field in kwargs for field in required_fields):
+    if not collection_name:
         return
 
-    try:
-        return client.collections[collection_name].documents.search(kwargs)
-    except TypesenseClientError:
-        return None
+    search_parameters = {}
+
+    for key, value in kwargs.items():
+        search_parameters.update({key: value})
+
+    return client.collections[collection_name].documents.search(search_parameters)
 
 
 def get_unix_timestamp(datetime_object) -> int:
