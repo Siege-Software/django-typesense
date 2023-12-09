@@ -164,12 +164,7 @@ def typesense_search(collection_name, **kwargs):
     if not collection_name:
         return
 
-    search_parameters = {}
-
-    for key, value in kwargs.items():
-        search_parameters.update({key: value})
-
-    return client.collections[collection_name].documents.search(search_parameters)
+    return client.collections[collection_name].documents.search(kwargs)
 
 
 def get_unix_timestamp(datetime_object) -> int:
