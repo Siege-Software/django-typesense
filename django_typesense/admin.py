@@ -81,15 +81,10 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         self, request, results, per_page, orphans=0, allow_empty_first_page=True
     ):
         # fallback incase we receive a queryset.
-        # Happens for autocomplete fields. Simple fix to avoid creating a custom AdminSite and AutoCompleteJSONView
-        search_term = request.GET.get("term", "*")
         if isinstance(results, QuerySet):
-            if not issubclass(results.model, TypesenseModelMixin):
-                return super().get_paginator(
-                    request, results, per_page, orphans, allow_empty_first_page
-                )
-
-            results = self.get_typesense_search_results(request, search_term)
+            return super().get_paginator(
+                request, results, per_page, orphans, allow_empty_first_page
+            )
 
         return TypesenseSearchPaginator(
             results, per_page, orphans, allow_empty_first_page, self.model
@@ -127,3 +122,10 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
             sort_by=sort_by,
         )
         return results
+
+    def get_search_results(self, request, queryset, search_term):
+        may_have_duplicates = False
+        results = self.get_typesense_search_results(request, search_term)
+        ids = [result["document"]["id"] for result in results["hits"]]
+        queryset = queryset.filter(id__in=ids)
+        return queryset, may_have_duplicates
