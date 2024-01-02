@@ -21,6 +21,7 @@ All types of contributions are encouraged and valued. See the [Table of Contents
 - [Styleguides](#styleguides)
   - [Commit Messages](#commit-messages)
   - [Branch Names](#branch-names)
+  - [Doc Strings](#doc-strings)
 
 ## I Have a Question
 
@@ -215,3 +216,7 @@ See also: #1620
 23-feature/add-typesense-search-util
 23-chore/update-utils-tests
 ```
+
+### Doc Strings
+
+We are using [NumpyDoc](https://numpydoc.readthedocs.io/en/latest/format.html) style for docstrings.
