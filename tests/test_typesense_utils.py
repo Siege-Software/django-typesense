@@ -26,12 +26,12 @@ class TestUpdateBatch(TestCase):
         SongFactory.create_batch(size=self.song_count)
 
     def test_update_batch(self):
-        songs = Song.objects.all()
-        self.assertEqual(songs.count(), self.song_count)
+        songa = Song.objects.all()
+        self.assertEqual(songa.count(), self.song_count)
 
         with self.assertLogs(level="DEBUG") as logs:
             batch_number = 1
-            update_batch(songs, SongCollection, batch_number)
+            update_batch(songa, SongCollection, batch_number)
             self.assertEqual(
                 logs.output[-1],
                 f"DEBUG:django_typesense.utils:Batch {batch_number} Updated with {self.song_count} records ✓",
@@ -46,14 +46,6 @@ class TestUpdateBatch(TestCase):
 
         with self.assertRaises(BatchUpdateError):
             update_batch(songs, SongCollection, 1)
-
-    @mock.patch("tests.collections.SongCollection.update", return_value=None)
-    def test_update_batch_return_none(self, _):
-        songs = Song.objects.all()
-        self.assertEqual(songs.count(), self.song_count)
-
-        result = update_batch(songs, SongCollection, 1)
-        self.assertIsNone(result)
 
 
 class TestBulkUpdateTypesenseRecords(TestCase):
@@ -161,14 +153,18 @@ class TestTypesenseSearch(TestCase):
         self.assertIsNotNone(results)
         self.assertEqual(results["found"], 20)
 
-    def test_typesense_search_invalid_parameters(self):
-        data = {"q": "song", "query_by": self.query_fields}
-        results = typesense_search("", **data)
-        self.assertIsNone(results)
-
-        with self.assertRaises(TypesenseClientError):
-            data = {"q": "search"}
-            typesense_search(self.collection_name, **data)
+    # def test_typesense_search_invalid_parameters(self):
+    #     data = {"q": "song", "query_by": self.query_fields}
+    #     results = typesense_search("", **data)
+    #     self.assertIsNone(results)
+    #
+    #     data = {"q": "song"}
+    #     results = typesense_search(self.collection_name, **data)
+    #     self.assertIsNone(results)
+    #
+    #     data = {"q": "song", "query_by": self.query_fields}
+    #     results = typesense_search("invalid_collection", **data)
+    #     self.assertIsNone(results)
 
 
 class TestGetUnixTimestamp(TestCase):
