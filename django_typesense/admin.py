@@ -124,8 +124,14 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         return results
 
     def get_search_results(self, request, queryset, search_term):
-        may_have_duplicates = False
-        results = self.get_typesense_search_results(request, search_term)
-        ids = [result["document"]["id"] for result in results["hits"]]
-        queryset = queryset.filter(id__in=ids)
+        if not request.POST.get("action"):
+            may_have_duplicates = False
+            results = self.get_typesense_search_results(request, search_term)
+            ids = [result["document"]["id"] for result in results["hits"]]
+            queryset = queryset.filter(id__in=ids)
+        else:
+            queryset, may_have_duplicates = super().get_search_results(
+                request, queryset, search_term
+            )
+
         return queryset, may_have_duplicates
