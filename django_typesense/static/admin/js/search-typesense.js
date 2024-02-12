@@ -4,7 +4,8 @@
             $.getJSON(endpoint, request_parameters)
                 .done(response => {
                     changelist_form.fadeTo('fast', 0.5).promise().then(() => {
-                        changelist_form.html($(response['html']).find('#changelist-form').html());
+                        let newChangelistHTML = '<h2>Click Search to complete</h2>' + $(response['html']).find('#changelist-form').html()
+                        changelist_form.html(newChangelistHTML);
                         changelist_form.fadeTo('fast', 1);
                     })
                 })
