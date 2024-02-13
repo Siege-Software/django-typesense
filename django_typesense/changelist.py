@@ -389,20 +389,5 @@ class TypesenseChangeList(ChangeList):
 
     def get_queryset(self, request):
         # this is needed for admin actions that call cl.get_queryset
-
-        # TODO: The uncommented code below introduces a issue. Search filters passed to typesense not available here.
-        #  Maybe look for a way to reverse enmgineer or a better solution to the uncommented cose that is lazy
-        #  like django querysets.
-        # To reduce the trips use max per_page
-        # self.list_per_page = 250  # Updated but not used, check self.model_admin.list_per_page
-        # ids = []
-        # while True:
-        #     results = self.get_typesense_results(request)
-        #     if not results["hits"]:
-        #         break
-        #
-        #     ids.extend([result["document"]["id"] for result in results["hits"]])
-        #     self.page_num += 1
-        #
-        # return self.model.objects.filter(id__in=ids)
+        # exporting is the currently possible way of getting records from typesense without pagination
         return super().get_queryset(request)
