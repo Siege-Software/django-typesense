@@ -14,6 +14,15 @@ logger = logging.getLogger(__name__)
 
 
 class TypesenseSearchAdminMixin(admin.ModelAdmin):
+    typesense_search_fields = []
+
+    def get_typesense_search_fields(self, request):
+        """
+        Return a sequence containing the fields to be searched whenever
+        somebody submits a search query.
+        """
+        return self.typesense_search_fields
+
     @property
     def media(self):
         super_media = super().media
