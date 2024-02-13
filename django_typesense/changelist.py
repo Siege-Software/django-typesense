@@ -77,7 +77,7 @@ class TypesenseChangeList(ChangeList):
         self.has_active_filters = None
         self.clear_all_filters_qs = None
         self.date_hierarchy = date_hierarchy
-        self.search_fields = model_admin.get_typesense_search_fields()
+        self.search_fields = model_admin.get_typesense_search_fields(request)
         self.list_select_related = list_select_related
         self.list_per_page = min(list_per_page, 250)  # Typesense Max hits per page
         self.list_max_show_all = min(
