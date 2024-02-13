@@ -7,13 +7,22 @@ from django.forms import forms
 from django.http import JsonResponse
 
 from django_typesense.mixins import TypesenseModelMixin
-from django_typesense.utils import typesense_search
+from django_typesense.utils import typesense_search, export_documents
 from django_typesense.paginator import TypesenseSearchPaginator
 
 logger = logging.getLogger(__name__)
 
 
 class TypesenseSearchAdminMixin(admin.ModelAdmin):
+    typesense_search_fields = []
+
+    def get_typesense_search_fields(self, request):
+        """
+        Return a sequence containing the fields to be searched whenever
+        somebody submits a search query.
+        """
+        return self.typesense_search_fields
+
     @property
     def media(self):
         super_media = super().media
@@ -130,6 +139,12 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
             ids = [result["document"]["id"] for result in results["hits"]]
             queryset = queryset.filter(id__in=ids)
         else:
+            id_dict_list = export_documents(
+                self.model.collection_class.schema_name, include_fields=["id"]
+            )
+            queryset = queryset.filter(
+                id__in=[id_dict["id"] for id_dict in id_dict_list]
+            )
             queryset, may_have_duplicates = super().get_search_results(
                 request, queryset, search_term
             )

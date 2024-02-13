@@ -1,7 +1,9 @@
 import concurrent.futures
+import json
 import logging
 import os
 from datetime import date, datetime, time
+from typing import List
 
 from django.core.exceptions import FieldError
 from django.core.paginator import Paginator
@@ -202,3 +204,30 @@ def get_unix_timestamp(datetime_object) -> int:
         )
 
     return timestamp
+
+
+def export_documents(
+    collection_name,
+    filter_by: str = None,
+    include_fields: List[str] = None,
+    exclude_fields: List[str] = None,
+) -> List[dict]:
+    from django_typesense.typesense_client import client
+
+    params = {}
+    if filter_by is not None:
+        params["filter_by"] = filter_by
+
+    if include_fields is not None:
+        params["include_fields"] = include_fields
+
+    if exclude_fields is not None:
+        params["exclude_fields"] = exclude_fields
+
+    if not params:
+        params = None
+
+    jsonlist = (
+        client.collections[collection_name].documents.export(params=params).splitlines()
+    )
+    return list(map(json.loads, jsonlist))
