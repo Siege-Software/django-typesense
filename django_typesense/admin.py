@@ -139,12 +139,12 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
             ids = [result["document"]["id"] for result in results["hits"]]
             queryset = queryset.filter(id__in=ids)
         else:
-            id_dict_list = export_documents(
-                self.model.collection_class.schema_name, include_fields=["id"]
-            )
-            queryset = queryset.filter(
-                id__in=[id_dict["id"] for id_dict in id_dict_list]
-            )
+            # id_dict_list = export_documents(
+            #     self.model.collection_class.schema_name, include_fields=["id"]
+            # )
+            # queryset = queryset.filter(
+            #     id__in=[id_dict["id"] for id_dict in id_dict_list]
+            # )
             queryset, may_have_duplicates = super().get_search_results(
                 request, queryset, search_term
             )
