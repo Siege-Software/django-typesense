@@ -17,9 +17,8 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
     typesense_search_fields = []
 
     def get_typesense_search_fields(self, request):
-        """
-        Return a sequence containing the fields to be searched whenever
-        somebody submits a search query.
+        """Return a sequence containing the fields to
+        be searched wheneversomebody submits a search query.
         """
         return self.typesense_search_fields
 
@@ -33,9 +32,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
 
     @csrf_protect_m
     def changelist_view(self, request, extra_context=None):
-        """
-        The 'change list' admin view for this model.
-        """
+        """The 'change list' admin view for this model."""
         template_response = super().changelist_view(request, extra_context)
 
         is_ajax = request.META.get("HTTP_X_REQUESTED_WITH") == "XMLHttpRequest"
@@ -46,13 +43,16 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         return template_response
 
     def get_sortable_by(self, request):
-        """
-        Get sortable fields; these are fields that sort is defaulted or set to True.
+        """Get sortable fields; these are fields that sort is defaulted or set to True.
 
-        Args:
-            request: the HttpRequest
+        Parameters
+        ----------
+        request: HttpRequest
+            The current request object.
 
-        Returns:
+        Returns
+        -------
+        list
             A list of field names
         """
 
@@ -62,13 +62,17 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         )
 
     def get_results(self, request):
-        """
-        Get all indexed data without any filtering or specific search terms. Works like `ModelAdmin.get_queryset()`
+        """Get all indexed data without any filtering or specific
+        search terms. Works like `ModelAdmin.get_queryset()`.
 
-        Args:
-            request: the HttpRequest
+        Parameters
+        ----------
+        request: HttpRequest
+            The current request object.
 
-        Returns:
+        Returns
+        -------
+        list
             A list of the typesense results
         """
 
@@ -79,9 +83,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         )
 
     def get_changelist(self, request, **kwargs):
-        """
-        Return the ChangeList class for use on the changelist page.
-        """
+        """Return the ChangeList class for use on the changelist page."""
         from django_typesense.changelist import TypesenseChangeList
 
         return TypesenseChangeList
@@ -108,16 +110,25 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         sort_by: str = "",
     ):
         """
-        Get the results from typesense with the provided filtering, sorting, pagination and search parameters applied
+        Get the results from typesense with the provided filtering,
+        sorting, pagination and search parameters applied.
 
-        Args:
-            search_term: The search term provided in the search form
-            request: the current request object
-            page_num: The requested page number
-            filter_by: The filtering parameters
-            sort_by: The sort parameters
+        Parameters
+        ----------
+        request: HttpRequest
+            The current request object.
+        search_term: str
+            The search term provided in the search form.
+        page_num: int
+            The requested page number.
+        filter_by: str
+            The filtering parameters.
+        sort_by: str
+            The sort parameters.
 
-        Returns:
+        Returns
+        -------
+        list
             A list of typesense results
         """
 
