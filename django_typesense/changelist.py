@@ -60,7 +60,7 @@ class TypesenseChangeList(ChangeList):
         list_editable,
         model_admin,
         sortable_by,
-        search_help_text,
+        search_help_text="",
     ):
         self.model = model
         self.opts = model._meta
