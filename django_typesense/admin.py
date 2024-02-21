@@ -6,9 +6,8 @@ from django.db.models import QuerySet
 from django.forms import forms
 from django.http import JsonResponse
 
-from django_typesense.mixins import TypesenseModelMixin
-from django_typesense.utils import typesense_search, export_documents
 from django_typesense.paginator import TypesenseSearchPaginator
+from django_typesense.utils import typesense_search
 
 logger = logging.getLogger(__name__)
 
