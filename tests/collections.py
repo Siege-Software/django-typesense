@@ -4,6 +4,7 @@ from django_typesense.collections import TypesenseCollection
 
 class SongCollection(TypesenseCollection):
     query_by_fields = "title,artist_names,genre_name"
+    sortable_fields = ["id", "title"]
 
     title = fields.TypesenseCharField()
     genre_name = fields.TypesenseCharField(value="genre.name")
