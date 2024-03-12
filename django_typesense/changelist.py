@@ -258,10 +258,14 @@ class TypesenseChangeList(ChangeList):
         field = self.model.collection_class.get_field(field_name)
 
         for key, value in used_parameters.items():
-            if not value:
+            if value is None or value == "":
                 continue
 
-            _, lookup = key.rsplit("__", maxsplit=1)
+            try:
+                _, lookup = key.rsplit("__", maxsplit=1)
+            except ValueError:
+                lookup = ""
+
             lookup = lookup or "exact"
             if lookup == "isnull":
                 # Null search is not supported in typesense
@@ -286,14 +290,18 @@ class TypesenseChangeList(ChangeList):
             ] = f"{lookup_to_operator[lookup]}{min_val or max_val}"
             value = None
 
-        if value:
+        if value is not None:
             if field.field_type == "string":
                 search_filters_dict[
                     field_name
                 ] = f":{lookup_to_operator[lookup]}{value}"
             elif field.field_type == "bool":
-                value = value.lower()
+                if isinstance(value, str):
+                    value = value.lower()
+
                 boolean_map = {
+                    0: "false",
+                    1: "true",
                     "0": "false",
                     "1": "true",
                     "false": "false",
