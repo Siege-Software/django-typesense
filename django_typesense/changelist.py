@@ -290,7 +290,7 @@ class TypesenseChangeList(ChangeList):
             ] = f"{lookup_to_operator[lookup]}{min_val or max_val}"
             value = None
 
-        if value is not None:
+        if value is not None and lookup is not None:
             if field.field_type == "string":
                 search_filters_dict[
                     field_name
