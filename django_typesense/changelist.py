@@ -1,3 +1,5 @@
+import logging
+
 from django import forms
 from django.contrib import messages
 from django.contrib.admin.exceptions import DisallowedModelAdminToField
@@ -31,6 +33,8 @@ IGNORED_PARAMS = (
     IS_POPUP_VAR,
     TO_FIELD_VAR,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class ChangeListSearchForm(forms.Form):
@@ -255,7 +259,13 @@ class TypesenseChangeList(ChangeList):
         }
         max_val, min_val, lookup, value = None, None, None, None
 
-        field = self.model.collection_class.get_field(field_name)
+        try:
+            field = self.model.collection_class.get_field(field_name)
+        except KeyError as er:
+            logger.debug(
+                f"Searching `{field_name}` with parameters `{used_parameters}` produced error: {er}"
+            )
+            return search_filters_dict
 
         for key, value in used_parameters.items():
             if value is None or value == "":
