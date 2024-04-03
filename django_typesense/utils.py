@@ -41,12 +41,15 @@ def update_batch(documents_queryset: QuerySet, collection_class, batch_no: int) 
     if responses is None:
         return
 
-    failure_responses = [response for response in responses if not response["success"]]
+    if isinstance(responses, list):
+        failure_responses = [
+            response for response in responses if not response["success"]
+        ]
 
-    if failure_responses:
-        raise BatchUpdateError(
-            f"An Error occurred during the bulk update: {failure_responses}"
-        )
+        if failure_responses:
+            raise BatchUpdateError(
+                f"An Error occurred during the bulk update: {failure_responses}"
+            )
 
     logger.debug(f"Batch {batch_no} Updated with {len(collection.data)} records ✓")
 
