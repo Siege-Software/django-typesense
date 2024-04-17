@@ -283,9 +283,9 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
             schema_changes["fields"] = field_changes
 
         if not schema_changes:
-            logger.debug(f"No schema changes in {self.schema_name}")
             return
 
+        logger.debug(f"Updating schema changes in {self.schema_name}")
         return client.collections[self.schema_name].update(schema_changes)
 
     def drop_typesense_collection(self):
@@ -374,7 +374,7 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
                 client.collections[self.schema_name].synonyms.upsert(
                     synonym_name, synonym_data
                 )
-            elif synonym_data != current_synonyms[synonym_name]:
+            elif synonym_data['synonyms'] != current_synonyms[synonym_name]['synonyms']:
                 has_changes = True
                 client.collections[self.schema_name].synonyms.upsert(
                     synonym_name, synonym_data
@@ -382,8 +382,6 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
 
         if has_changes:
             logger.debug(f"Synonyms updated in {self.schema_name}")
-        else:
-            logger.debug(f"No synonyms to update in {self.schema_name}")
 
     def get_synonyms(self) -> dict:
         """List all synonyms associated with this collection"""
