@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+from operator import methodcaller
 from typing import Dict, Iterable, List, Union
 
 from django.db.models import QuerySet
@@ -195,6 +196,26 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         """
         fields = cls.get_fields()
         return fields[name]
+
+    @classmethod
+    def get_django_lookup(cls, field, value) -> dict:
+        """
+        Get the lookup that would have been used for this field in django. Expects to find a method on
+        the collection called `get_FIELD_lookup` otherwise a NotImplementedError is raised
+
+        Args:
+            collection_field_name: the name of the field in the collection
+            value: the value to look for
+
+        Returns:
+            A dictionary of the fields to the value.
+        """
+
+        if "get_%s_lookup" % field not in cls.__dict__:
+            raise NotImplementedError
+
+        method = methodcaller("get_%s_lookup" % field, value)
+        return method(cls)
 
     @cached_property
     def schema_fields(self) -> list:

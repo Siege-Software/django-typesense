@@ -9,8 +9,9 @@ from django.contrib.admin.options import (
     IncorrectLookupParameters,
 )
 from django.contrib.admin.views.main import ChangeList
+from django.core.exceptions import ImproperlyConfigured, SuspiciousOperation
 from django.core.paginator import InvalidPage
-from django.db.models import OrderBy
+from django.db.models import OrderBy, OuterRef, Exists
 from django.utils.translation import gettext
 from django.utils.dateparse import parse_datetime
 
@@ -408,4 +409,72 @@ class TypesenseChangeList(ChangeList):
     def get_queryset(self, request):
         # this is needed for admin actions that call cl.get_queryset
         # exporting is the currently possible way of getting records from typesense without pagination
-        return super().get_queryset(request)
+        # Typesense team will work on a flag to disable pagination, until then, we need a way to get this to work.
+        # Problem happens when django finds fields only present on typesense in its filter i.e IncorrectLookupParameters
+        # First, we collect all the declared list filters.
+        (
+            self.filter_specs,
+            self.has_filters,
+            remaining_lookup_params,
+            filters_may_have_duplicates,
+            self.has_active_filters,
+        ) = self.get_filters(request)
+        # Then, we let every list filter modify the queryset to its liking.
+        qs = self.root_queryset
+
+        for filter_spec in self.filter_specs:
+            new_qs = filter_spec.queryset(request, qs)
+            if new_qs is not None:
+                qs = new_qs
+
+        lookup_params_keys = remaining_lookup_params.keys()
+        model_field_names = set((local_field.name for local_field in self.model._meta.local_fields))
+        for key in lookup_params_keys:
+            if key not in model_field_names:
+                # means k only available in typesense
+                value = remaining_lookup_params.pop(key)
+                new_lookup_params = self.model.collection_class.get_django_lookup(key, value)
+                remaining_lookup_params.update(new_lookup_params)
+
+        try:
+            # Finally, we apply the remaining lookup parameters from the query
+            # string (i.e. those that haven't already been processed by the
+            # filters).
+            qs = qs.filter(**remaining_lookup_params)
+        except (SuspiciousOperation, ImproperlyConfigured):
+            # Allow certain types of errors to be re-raised as-is so that the
+            # caller can treat them in a special way.
+            raise
+        except Exception as e:
+            # Every other error is caught with a naked except, because we don't
+            # have any other way of validating lookup parameters. They might be
+            # invalid if the keyword arguments are incorrect, or if the values
+            # are not in the correct type, so we might get FieldError,
+            # ValueError, ValidationError, or ?.
+            raise IncorrectLookupParameters(e)
+
+        # Apply search results
+        qs, search_may_have_duplicates = self.model_admin.get_search_results(
+            request,
+            qs,
+            self.query,
+        )
+
+        # Set query string for clearing all filters.
+        self.clear_all_filters_qs = self.get_query_string(
+            new_params=remaining_lookup_params,
+            remove=self.get_filters_params(),
+        )
+        # Remove duplicates from results, if necessary
+        if filters_may_have_duplicates | search_may_have_duplicates:
+            qs = qs.filter(pk=OuterRef("pk"))
+            qs = self.root_queryset.filter(Exists(qs))
+
+        # Set ordering.
+        ordering = self.get_ordering(request, qs)
+        qs = qs.order_by(*ordering)
+
+        if not qs.query.select_related:
+            qs = self.apply_select_related(qs)
+
+        return qs
