@@ -198,21 +198,25 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         return fields[name]
 
     @classmethod
-    def get_django_lookup(cls, field, value) -> dict:
+    def get_django_lookup(cls, field, value, exception: Exception) -> dict:
         """
         Get the lookup that would have been used for this field in django. Expects to find a method on
         the collection called `get_FIELD_lookup` otherwise a NotImplementedError is raised
 
         Args:
-            collection_field_name: the name of the field in the collection
+            field: the name of the field in the collection
             value: the value to look for
+            exception: the django exception that led us here
 
         Returns:
             A dictionary of the fields to the value.
         """
 
         if "get_%s_lookup" % field not in cls.__dict__:
-            raise NotImplementedError
+            raise Exception([
+                exception,
+                NotImplementedError("get_%s_lookup is not implemented" % field)
+            ])
 
         method = methodcaller("get_%s_lookup" % field, value)
         return method(cls)
