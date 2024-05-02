@@ -427,31 +427,26 @@ class TypesenseChangeList(ChangeList):
             if new_qs is not None:
                 qs = new_qs
 
-        lookup_params_keys = remaining_lookup_params.keys()
-        model_field_names = set((local_field.name for local_field in self.model._meta.local_fields))
-        for key in lookup_params_keys:
-            if key not in model_field_names:
-                # means k only available in typesense
-                value = remaining_lookup_params.pop(key)
-                new_lookup_params = self.model.collection_class.get_django_lookup(key, value)
-                remaining_lookup_params.update(new_lookup_params)
+        for param, value in remaining_lookup_params.items():
+            try:
+                # Finally, we apply the remaining lookup parameters from the query
+                # string (i.e. those that haven't already been processed by the
+                # filters).
+                qs = qs.filter(**{param: value})
+            except (SuspiciousOperation, ImproperlyConfigured):
+                # Allow certain types of errors to be re-raised as-is so that the
+                # caller can treat them in a special way.
+                raise
+            except Exception as e:
+                # Every other error is caught with a naked except, because we don't
+                # have any other way of validating lookup parameters. They might be
+                # invalid if the keyword arguments are incorrect, or if the values
+                # are not in the correct type, so we might get FieldError,
+                # ValueError, ValidationError, or ?.
 
-        try:
-            # Finally, we apply the remaining lookup parameters from the query
-            # string (i.e. those that haven't already been processed by the
-            # filters).
-            qs = qs.filter(**remaining_lookup_params)
-        except (SuspiciousOperation, ImproperlyConfigured):
-            # Allow certain types of errors to be re-raised as-is so that the
-            # caller can treat them in a special way.
-            raise
-        except Exception as e:
-            # Every other error is caught with a naked except, because we don't
-            # have any other way of validating lookup parameters. They might be
-            # invalid if the keyword arguments are incorrect, or if the values
-            # are not in the correct type, so we might get FieldError,
-            # ValueError, ValidationError, or ?.
-            raise IncorrectLookupParameters(e)
+                # for django-typesense, possibly means k only available in typesense
+                new_lookup_params = self.model.collection_class.get_django_lookup(param, value, e)
+                qs = qs.filter(**new_lookup_params)
 
         # Apply search results
         qs, search_may_have_duplicates = self.model_admin.get_search_results(
