@@ -1,3 +1,4 @@
+from django.db import transaction
 from django.db.models.signals import m2m_changed, post_save, pre_delete
 from django.dispatch import receiver
 
@@ -9,7 +10,9 @@ def post_save_typesense_models(sender, instance, **kwargs):
     if not issubclass(sender, TypesenseModelMixin):
         return
 
-    sender.get_collection(instance, update_fields=kwargs.get('update_fields', [])).update()
+    transaction.on_commit(
+        sender.get_collection(instance, update_fields=kwargs.get('update_fields', [])).update
+    )
 
 
 @receiver(pre_delete)
