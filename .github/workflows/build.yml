@@ -54,7 +54,7 @@ jobs:
       - name: Setup TypeSense
         uses: jirevwe/typesense-github-action@v1.0.1
         with:
-          typesense-version: 0.25.1
+          typesense-version: 0.26.0
           typesense-api-key: sample_key
 
       - name: Run tests

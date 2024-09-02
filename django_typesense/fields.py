@@ -15,6 +15,7 @@ TYPESENSE_SCHEMA_ATTRS = [
     "facet",
     "infix",
     "locale",
+    "stem",
 ]
 
 
@@ -32,6 +33,7 @@ class TypesenseField:
         facet: bool = False,
         infix: bool = False,
         locale: str = "",
+        stem: bool = False,
     ):
         self._value = value
         self._name = None
@@ -41,6 +43,7 @@ class TypesenseField:
         self.facet = facet
         self.infix = infix
         self.locale = locale
+        self.stem = stem
 
     def __str__(self):
         return f"{self.name}"
