@@ -14,14 +14,43 @@
 Faster Django Admin powered by [Typesense](https://typesense.org/)
 
 ## Quick Start Guide
+
 ### Installation
-`pip install django-typesense`
+
+```sh
+pip install django-typesense
+```
 
 or install directly from github to test the most recent version
 
-`pip install git+https://github.com/Siege-Software/django-typesense.git`
+```sh
+pip install git+https://github.com/Siege-Software/django-typesense.git
+```
 
-Add `django_typesense` to the list of installed apps.
+### Configuration
+
+Update your settings to include the following
+
+- Add `django_typesense` to the list of installed apps.
+
+```py
+...
+INSTALLED_APPS = [
+    ...
+    "django_typesense"
+]
+```
+
+- Add `TYPESENSE` connection details
+
+```py
+...
+TYPESENSE = {
+    "api_key": "xyz",
+    "nodes": [{"host": "0.0.0.0", "port": "8108", "protocol": "http"}],
+    "connection_timeout_seconds": 2
+}
+```
 
 Follow this [guide](https://typesense.org/docs/guide/install-typesense.html#option-1-typesense-cloud) to install and run typesense
 
