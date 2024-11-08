@@ -1,22 +1,15 @@
-from datetime import date, timedelta
-
 from django.test import TestCase
 
-from tests.models import Artist, Genre, Library, Song
+from tests.factories import ArtistFactory, GenreFactory, SongFactory
+from tests.models import Artist, Library, Song
 from tests.utils import get_document
 
 
 class TestTypeSenseSignals(TestCase):
     def setUp(self):
-        self.genre = Genre.objects.create(name="genre1")
-        self.artist = Artist.objects.create(name="artist1")
-        self.song = Song.objects.create(
-            title="New Song",
-            genre=self.genre,
-            release_date=date.today(),
-            description="New song description",
-            duration=timedelta(minutes=3, seconds=35),
-        )
+        self.genre = GenreFactory()
+        self.artist = ArtistFactory()
+        self.song = SongFactory(genre=self.genre)
 
     def test_post_save_typesense_models(self):
         schema_name = self.song.collection_class.schema_name

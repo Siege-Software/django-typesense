@@ -4,7 +4,7 @@ name: "build"
 on:  # yamllint disable-line rule:truthy
   pull_request:
   push:
-    branches: main
+    branches: [main]
 
 jobs:
   build:
@@ -54,7 +54,7 @@ jobs:
       - name: Setup TypeSense
         uses: jirevwe/typesense-github-action@v1.0.1
         with:
-          typesense-version: 0.26.0
+          typesense-version: '27.0'
           typesense-api-key: sample_key
 
       - name: Run tests

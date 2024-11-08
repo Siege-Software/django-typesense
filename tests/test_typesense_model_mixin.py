@@ -1,25 +1,17 @@
-from datetime import date, timedelta
-
 from django.test import TestCase
 
 from django_typesense.mixins import TypesenseManager
 
-from tests.models import Artist, Genre, Song
+from tests.factories import ArtistFactory, GenreFactory, SongFactory
+from tests.models import Song
 from tests.utils import get_document
 
 
 class TestTypeSenseMixin(TestCase):
     def setUp(self):
-        self.artist = Artist.objects.create(name="artist1")
-        self.genre = Genre.objects.create(name="genre1")
-        self.song = Song.objects.create(
-            title="New Song",
-            genre=self.genre,
-            release_date=date.today(),
-            description="New song description",
-            duration=timedelta(minutes=3, seconds=35),
-        )
-        self.song.artists.add(self.artist.pk)
+        self.genre = GenreFactory()
+        self.artist = ArtistFactory()
+        self.song = SongFactory(genre=self.genre, artists=[self.artist])
 
     def test_get_collection_class(self):
         collection_class = Song.get_collection_class()
