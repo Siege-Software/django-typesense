@@ -9,19 +9,49 @@
 ![Django Versions](https://img.shields.io/badge/django-%3E%3D3.2-brightgreen)
 [![PyPI License](https://img.shields.io/pypi/l/django-typesense.svg)](https://pypi.org/project/django-typesense/)
 
-
 ## What is it?
+
 Faster Django Admin powered by [Typesense](https://typesense.org/)
 
 ## Quick Start Guide
+
 ### Installation
-`pip install django-typesense`
+
+```sh
+pip install django-typesense
+```
 
 or install directly from github to test the most recent version
 
-`pip install git+https://github.com/Siege-Software/django-typesense.git`
+```sh
+pip install git+https://github.com/Siege-Software/django-typesense.git
+```
 
-Add `django_typesense` to the list of installed apps.
+### Configuration
+
+Update your `settings.py` to inlcude the following
+
+- Add `django_typesense` to the list of installed apps.
+
+```py
+// settings.py
+INSTALLED_APPS = [
+    ...
+    "django_typesense"
+]
+```
+
+- Add typesense connection details
+
+```py
+// settings.py
+...
+TYPESENSE = {
+    "api_key": "xyz",
+    "nodes": [{"host": "0.0.0.0", "port": "8108", "protocol": "http"}],
+    "connection_timeout_seconds": 2
+}
+```
 
 Follow this [guide](https://typesense.org/docs/guide/install-typesense.html#option-1-typesense-cloud) to install and run typesense
 
