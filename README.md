@@ -164,6 +164,34 @@ def genre_name(self, obj):
     return obj.genre_name
 ```
 
+### Search Collections
+
+Using Typesense for search
+
+```py
+from django_typesense.utils import typesense_search
+
+from .models import Song
+
+
+def search_songs(request):
+    search_term = request.GET.get("q", None)
+    songs = Song.objects.all()
+
+    if search_term:
+        data = {
+            "q": search_term,
+            "query_by": Song.collection_class.query_by_fields,
+            # Include other search parameters here
+            # https://typesense.org/docs/27.1/api/search.html#search-parameters
+        }
+        res = typesense_search(Song.collection_class.schema_name, **data)
+        ids = [result["document"]["id"] for result in res["hits"]]
+        songs = songs.filter(id__in=ids)
+
+    ...
+```
+
 ### Update Collection Schema
 To add or remove fields to a collection's schema in place, update your collection then run:
     `python manage.py updatecollections`. Consider adding this to your CI/CD pipeline.
