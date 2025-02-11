@@ -100,12 +100,13 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         )
 
     def get_typesense_search_results(
-        self,
-        request,
-        search_term: str,
-        page_num: int = 1,
-        filter_by: str = "",
-        sort_by: str = "",
+            self,
+            request,
+            search_term: str,
+            page_num: int = 1,
+            filter_by: str = "",
+            sort_by: str = "",
+            list_per_page: int = None
     ):
         """
         Get the results from typesense with the provided filtering, sorting, pagination and search parameters applied
@@ -116,17 +117,20 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
             page_num: The requested page number
             filter_by: The filtering parameters
             sort_by: The sort parameters
+            list_per_page: The number of results to return per page
 
         Returns:
             A list of typesense results
         """
+        if list_per_page is None:
+            list_per_page = self.list_per_page
 
         results = typesense_search(
             collection_name=self.model.collection_class.schema_name,
             q=search_term or "*",
             query_by=self.model.collection_class.query_by_fields,
             page=page_num,
-            per_page=self.list_per_page,
+            per_page=list_per_page,
             filter_by=filter_by,
             sort_by=sort_by,
         )

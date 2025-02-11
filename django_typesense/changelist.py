@@ -152,7 +152,9 @@ class TypesenseChangeList(ChangeList):
 
         # Get the list of objects to display on this page.
         if (self.show_all and can_show_all) or not multi_page:
-            # Reuse values defined in paginator
+            paginator = self.model_admin.get_paginator(
+                request, self.results, self.list_max_show_all
+            )
             result_list = paginator.results
         else:
             try:
@@ -396,6 +398,7 @@ class TypesenseChangeList(ChangeList):
             self.page_num,
             filter_by=filter_by,
             sort_by=sort_by,
+            list_per_page=self.list_max_show_all  # so that if we have all the data if we need to show all
         )
 
         # Set query string for clearing all filters.
