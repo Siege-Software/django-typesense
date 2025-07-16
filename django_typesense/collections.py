@@ -164,7 +164,10 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         for obj in self.data:
             data = {}
             for key, value in obj.items():
-                field = self.get_field(key)
+                try:
+                    field = self.get_field(key)
+                except KeyError:
+                    continue
                 data[key] = field.to_python(value)
 
             _validated_data.append(data)
@@ -237,7 +240,13 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
             )
             if update_fields:
                 update_fields.add("id")
-                fields = [self.get_field(field_name) for field_name in update_fields]
+                fields = []
+                for field_name in update_fields:
+                    try:
+                        field = self.get_field(field_name)
+                    except KeyError:
+                        continue
+                    fields.append(field)
             else:
                 fields = []
         else:
