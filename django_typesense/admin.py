@@ -1,7 +1,7 @@
 import logging
 
 from django.contrib import admin
-from django.contrib.auth.admin import csrf_protect_m
+from django.contrib.admin.options import csrf_protect_m
 from django.db.models import QuerySet
 from django.forms import forms
 from django.http import JsonResponse
