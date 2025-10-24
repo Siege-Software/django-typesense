@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from operator import methodcaller
-from typing import Dict, Iterable, List, Union
+from collections.abc import Iterable
 
 from django.db.models import QuerySet
 from django.utils.functional import cached_property
@@ -68,11 +68,11 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
     default_sorting_field: str = ""
     token_separators: list = []
     symbols_to_index: list = []
-    synonyms: List[Synonym] = []
+    synonyms: list[Synonym] = []
 
     def __init__(
         self,
-        obj: Union[object, QuerySet, Iterable] = None,
+        obj: object | QuerySet | Iterable = None,
         many: bool = False,
         data: list = None,
         update_fields: list = None,
@@ -117,7 +117,7 @@ class TypesenseCollection(metaclass=TypesenseCollectionMeta):
         return data
 
     @classmethod
-    def get_fields(cls) -> Dict[str, TypesenseField]:
+    def get_fields(cls) -> dict[str, TypesenseField]:
         """
         Returns:
             A dictionary of the fields names to the field definition for this collection

@@ -3,7 +3,6 @@ import json
 import logging
 import os
 from datetime import date, datetime, time
-from typing import List
 
 from django.core.exceptions import FieldError
 from django.core.paginator import Paginator
@@ -212,9 +211,9 @@ def get_unix_timestamp(datetime_object) -> int:
 def export_documents(
     collection_name,
     filter_by: str = None,
-    include_fields: List[str] = None,
-    exclude_fields: List[str] = None,
-) -> List[dict]:
+    include_fields: list[str] = None,
+    exclude_fields: list[str] = None,
+) -> list[dict]:
     from django_typesense.typesense_client import client
 
     params = {}

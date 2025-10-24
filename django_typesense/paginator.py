@@ -19,7 +19,7 @@ class TypesenseSearchPaginator(Paginator):
         """
         documents = (hit['document'] for hit in self.object_list["hits"])
         collection = self.model.get_collection(data=documents)
-        model_field_names = set((local_field.name for local_field in self.model._meta.local_fields))
+        model_field_names = {local_field.name for local_field in self.model._meta.local_fields}
         results = []
 
         for _data in collection.validated_data:
