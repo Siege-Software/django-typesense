@@ -52,6 +52,19 @@ jobs:
           typesense-version: '27.0'
           typesense-api-key: sample_key
 
+      - name: Wait for TypeSense to be ready
+        run: |
+          echo "Waiting for TypeSense..."
+          for i in {1..30}; do
+            if curl -s http://localhost:8108/health | grep '"ok"' > /dev/null; then
+              echo "TypeSense is ready!"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo "TypeSense failed to start"
+          exit 1
+
       - name: Run tests
         run: |
           coverage run runtests.py
