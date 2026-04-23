@@ -37,6 +37,7 @@ IGNORED_PARAMS = (
 )
 
 logger = logging.getLogger(__name__)
+TYPESENSE_MAX_HITS_PER_PAGE = 250
 
 
 class ChangeListSearchForm(forms.Form):
@@ -85,10 +86,12 @@ class TypesenseChangeList(ChangeList):
         self.date_hierarchy = date_hierarchy
         self.search_fields = model_admin.get_typesense_search_fields(request)
         self.list_select_related = list_select_related
-        self.list_per_page = min(list_per_page, 250)  # Typesense Max hits per page
+        self.list_per_page = min(
+            list_per_page, TYPESENSE_MAX_HITS_PER_PAGE
+        )  # Typesense max hits per page
         self.list_max_show_all = min(
-            list_max_show_all, 250
-        )  # Typesense Max hits per page
+            list_max_show_all, TYPESENSE_MAX_HITS_PER_PAGE
+        )  # Typesense max hits per page
         self.model_admin = model_admin
         self.preserved_filters = model_admin.get_preserved_filters(request)
         self.sortable_by = sortable_by
@@ -104,6 +107,7 @@ class TypesenseChangeList(ChangeList):
             self.page_num = int(request.GET.get(PAGE_VAR, 1))
         except ValueError:
             self.page_num = 1
+        self.page_num = max(self.page_num, 1)
         self.show_all = ALL_VAR in request.GET
         self.is_popup = IS_POPUP_VAR in request.GET
         to_field = request.GET.get(TO_FIELD_VAR)
@@ -399,7 +403,7 @@ class TypesenseChangeList(ChangeList):
             self.page_num,
             filter_by=filter_by,
             sort_by=sort_by,
-            list_per_page=self.list_max_show_all  # so that if we have all the data if we need to show all
+            list_per_page=self.list_per_page,
         )
 
         # Set query string for clearing all filters.

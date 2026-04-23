@@ -11,6 +11,7 @@ from django_typesense.utils import typesense_search, export_documents
 from django_typesense.paginator import TypesenseSearchPaginator
 
 logger = logging.getLogger(__name__)
+TYPESENSE_MAX_HITS_PER_PAGE = 250
 
 
 class TypesenseSearchAdminMixin(admin.ModelAdmin):
@@ -124,6 +125,7 @@ class TypesenseSearchAdminMixin(admin.ModelAdmin):
         """
         if list_per_page is None:
             list_per_page = self.list_per_page
+        list_per_page = min(list_per_page, TYPESENSE_MAX_HITS_PER_PAGE)
 
         results = typesense_search(
             collection_name=self.model.collection_class.schema_name,
